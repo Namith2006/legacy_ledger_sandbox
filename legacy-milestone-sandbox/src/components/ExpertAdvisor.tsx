@@ -139,7 +139,8 @@ const ExpertAdvisor: React.FC<ExpertAdvisorProps> = ({
         body: JSON.stringify({
           model: 'openai/gpt-oss-120b',
           messages: [
-            // ... your existing system and user messages
+            { role: 'system', content: systemContext },
+            { role: 'user', content: prompt } // <--- Replaced 'command' with 'prompt'
           ],
           temperature: 0.1
         })
