@@ -127,19 +127,18 @@ const ExpertAdvisor: React.FC<ExpertAdvisorProps> = ({
         </actions>
       `;
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', { // NOTE: If you switched to OpenRouter, change this URL to 'https://openrouter.ai/api/v1/chat/completions'
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile", // <-- Updated model here!
-          temperature: 0.1,
+          model: 'openai/gpt-oss-120b', // <--- UPDATED MODEL STRING
           messages: [
-            { role: "system", content: systemContext },
-            { role: "user", content: userText }
-          ]
+            // ... your system and user messages
+          ],
+          temperature: 0.1
         })
       });
 
