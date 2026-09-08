@@ -378,8 +378,10 @@ const App: React.FC = () => {
               monthlyIncome={monthlyIncome} 
               investments={investments} 
               totalMonthlyExpenses={totalMonthlyExpenses} 
+              expenses={expenses} 
             />
 
+            <SinkingFunds />
             <SinkingFunds />
 
             <MilestoneBuckets 

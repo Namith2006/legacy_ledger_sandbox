@@ -5,6 +5,7 @@ interface TaxOptimizerProps {
   monthlyIncome: number;
   investments: CashFlowItem[];
   totalMonthlyExpenses?: number;
+  expenses?: CashFlowItem[]; // <-- NEW: Now it accepts raw expense data
 }
 
 interface TaxSlab {
@@ -14,7 +15,7 @@ interface TaxSlab {
   tax: number;
 }
 
-const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments, totalMonthlyExpenses = 0 }) => {
+const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments, totalMonthlyExpenses = 0, expenses = [] }) => {
   const { 
     annualIncome, 
     standardDeduction,
@@ -38,7 +39,10 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     totalAnnualInvested,
     annualExpenses,
     potentialSavings80C,
-    activeTax 
+    activeTax,
+    highestExpense,      // <-- NEW: Extracted for dynamic advice
+    highestInvestment,   // <-- NEW: Extracted for dynamic advice
+    annualDeficit        // <-- NEW: Extracted for dynamic advice
   } = useMemo(() => {
     const grossIncome = monthlyIncome * 12;
     const standardDeduction = Math.min(grossIncome, 50000); 
@@ -114,15 +118,35 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     const activeTax = recommended === 'Old Regime' ? finalTaxOld : (recommended === 'New Regime' ? finalTaxNew : finalTaxOld);
     const effectiveTaxRate = grossIncome > 0 ? (activeTax / grossIncome) * 100 : 0;
     const annualExpenses = totalMonthlyExpenses * 12;
-    const freeCashFlow = Math.max(0, grossIncome - annualExpenses - totalAnnualInvested - activeTax);
+    const unadjustedCashFlow = grossIncome - annualExpenses - totalAnnualInvested - activeTax;
+    const freeCashFlow = Math.max(0, unadjustedCashFlow);
+    const annualDeficit = unadjustedCashFlow < 0 ? Math.abs(unadjustedCashFlow) : 0;
+
+    // --- Dynamic Target Hunters ---
+    const highestExpense = expenses.length > 0 
+      ? expenses.reduce((max, e) => {
+          const eMonthly = e.frequency === 'annual' ? e.amount / 12 : e.amount;
+          const maxMonthly = max.frequency === 'annual' ? max.amount / 12 : max.amount;
+          return eMonthly > maxMonthly ? e : max;
+        }, expenses[0]) 
+      : null;
+
+    const highestInvestment = investments.length > 0
+      ? investments.reduce((max, i) => {
+          const iMonthly = i.frequency === 'annual' ? i.amount / 12 : i.amount;
+          const maxMonthly = max.frequency === 'annual' ? max.amount / 12 : max.amount;
+          return iMonthly > maxMonthly ? i : max;
+        }, investments[0])
+      : null;
 
     return { 
       annualIncome: grossIncome, standardDeduction, deductions80C, 
       taxableOld, slabsOld: slabsOldData, taxOld: taxOldBase, cessOld, finalTaxOld, rebateOld,
       taxableNew, slabsNew: slabsNewData, taxNew: taxNewBase, cessNew, finalTaxNew, rebateNew,
-      recommended, savings, effectiveTaxRate, freeCashFlow, totalAnnualInvested, annualExpenses, potentialSavings80C, activeTax
+      recommended, savings, effectiveTaxRate, freeCashFlow, totalAnnualInvested, annualExpenses, potentialSavings80C, activeTax,
+      highestExpense, highestInvestment, annualDeficit
     };
-  }, [monthlyIncome, investments, totalMonthlyExpenses]);
+  }, [monthlyIncome, investments, totalMonthlyExpenses, expenses]);
 
   const [showDetails, setShowDetails] = useState(true); 
 
@@ -308,7 +332,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           </div>
         )}
 
-        {/* --- SIMPLIFIED CASH FLOW & TAX EFFICIENCY DIAGNOSTICS --- */}
         <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden">
           <div className="p-4 border-b border-[#2C3E50] bg-[#0F1216]">
             <h3 className="text-[#E2E8F0] font-semibold text-sm uppercase tracking-widest flex items-center gap-2">
@@ -318,7 +341,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           
           <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-[#2C3E50]">
             
-            {/* Left Column: Flow Mapping */}
             <div className="p-5 space-y-4 font-mono text-xs">
               <div className="text-[10px] text-[#4A6572] uppercase tracking-widest mb-2 font-sans font-semibold">Annual Flow Mapping</div>
               
@@ -347,25 +369,24 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
               <div className="flex justify-between items-center text-[#10b981] pt-3 border-t border-[#2C3E50] font-bold text-sm">
                 <span>Unallocated Free Cash Flow</span>
-                <span>₹{Math.round(freeCashFlow).toLocaleString('en-IN')}</span>
+                <span className={annualDeficit > 0 ? "text-amber-500" : ""}>
+                  {annualDeficit > 0 ? `-₹${annualDeficit.toLocaleString('en-IN')}` : `₹${Math.round(freeCashFlow).toLocaleString('en-IN')}`}
+                </span>
               </div>
               
             </div>
 
-            {/* Right Column: The Action Plan */}
             <div className="p-5">
               <div className="text-[10px] text-[#4A6572] uppercase tracking-widest mb-4 font-semibold">The Action Plan</div>
 
-              {/* Step 1: Cash Flow Explanation */}
               <div className="mb-5">
                 <h4 className="text-[#E2E8F0] font-bold text-xs mb-2 flex items-center gap-2"><span>1️⃣</span> What is your Cash Flow?</h4>
                 <p className="text-xs text-[#4A6572] leading-relaxed">
                   Out of your total income of <strong className="text-[#E2E8F0]">₹{annualIncome.toLocaleString('en-IN')}</strong>, you spend <strong className="text-[#8B3A3A]">₹{annualExpenses.toLocaleString('en-IN')}</strong> on living, invest <strong className="text-blue-400">₹{totalAnnualInvested.toLocaleString('en-IN')}</strong>, and lose <strong className="text-[#8B3A3A]">₹{Math.round(activeTax).toLocaleString('en-IN')}</strong> to taxes.
-                  The remaining <strong className="text-[#10b981]">₹{Math.round(freeCashFlow).toLocaleString('en-IN')}</strong> is your "Free Cash Flow"—this is your actual unspent wealth that can be directed toward your ultimate family goals.
+                  The remaining <strong className={annualDeficit > 0 ? "text-amber-500" : "text-[#10b981]"}>{annualDeficit > 0 ? `-₹${annualDeficit.toLocaleString('en-IN')}` : `₹${Math.round(freeCashFlow).toLocaleString('en-IN')}`}</strong> is your "Free Cash Flow."
                 </p>
               </div>
 
-              {/* Step 2: Tax Burden */}
               <div className="mb-5">
                 <h4 className="text-[#E2E8F0] font-bold text-xs mb-2 flex items-center gap-2"><span>2️⃣</span> Your Tax Burden</h4>
                 <p className="text-xs text-[#4A6572] leading-relaxed">
@@ -373,33 +394,42 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 </p>
               </div>
 
-              {/* Step 3: Actionable Advice */}
               <div>
                 <h4 className="text-[#E2E8F0] font-bold text-xs mb-2 flex items-center gap-2"><span>3️⃣</span> How to stop wasting money:</h4>
                 
-                {freeCashFlow <= 0 ? (
+                {annualDeficit > 0 ? (
                   <div className="text-xs text-amber-500 leading-relaxed bg-amber-500/5 p-4 border border-amber-500/20 rounded shadow-sm">
                     <strong className="flex items-center gap-2 mb-3 text-sm">
                       <span>⚠️</span> CRITICAL: Cash Flow Deficit Detected
                     </strong>
                     <p className="mb-4 text-[#4A6572]">
-                      Your current layout leaves ₹0 (or negative) unallocated cash. Your expenses, active investments, and taxes are completely consuming your gross income. Before optimizing for tax, deploy this recovery protocol:
+                      Your current layout leaves you short by <strong className="text-amber-500">₹{annualDeficit.toLocaleString('en-IN')}</strong> per year. Your expenses, active investments, and taxes are mathematically consuming more than your gross income. Before optimizing for tax, deploy this data-driven recovery protocol:
                     </p>
                     
                     <div className="space-y-3 mt-4 text-[#E2E8F0]">
                       <div className="p-3 bg-[#0F1216] border border-[#2C3E50]/50 rounded">
                         <strong className="text-[#10b981] block mb-1">Strategy 1: The Expense Audit</strong>
-                        <span className="text-[#4A6572]">Review recurring outflows. Temporarily pause premium software/AI subscriptions, delay high-ticket consumer electronics upgrades, and ensure you are utilizing all available student discounts for tuition and gym memberships.</span>
+                        <span className="text-[#4A6572]">
+                          {highestExpense 
+                            ? `Your ledger shows your heaviest outgoing expense is "${highestExpense.name}" at ₹${highestExpense.amount.toLocaleString('en-IN')}/${highestExpense.frequency === 'annual' ? 'yr' : 'mo'}. If this is non-essential, reducing it is your fastest path to restoring liquidity.` 
+                            : `Review your recurring outflows. Cut any non-essential spending to free up immediate liquidity.`}
+                        </span>
                       </div>
                       
                       <div className="p-3 bg-[#0F1216] border border-[#2C3E50]/50 rounded">
                         <strong className="text-blue-400 block mb-1">Strategy 2: The Investment Pause</strong>
-                        <span className="text-[#4A6572]">If your Capital Deployed is high, temporarily halt your active SIPs. Funneling money into markets while running a daily deficit often forces reliance on high-interest credit. Rebuild your liquid cash buffer first.</span>
+                        <span className="text-[#4A6572]">
+                          {highestInvestment
+                            ? `You are currently funneling ₹${highestInvestment.amount.toLocaleString('en-IN')}/${highestInvestment.frequency === 'annual' ? 'yr' : 'mo'} into "${highestInvestment.name}". Investing while running a daily deficit forces reliance on high-interest credit. Temporarily pause this SIP to stop the bleeding.`
+                            : `If you have active SIPs, temporarily halt them. Funneling money into markets while running a deficit forces reliance on high-interest credit.`}
+                        </span>
                       </div>
 
                       <div className="p-3 bg-[#0F1216] border border-[#2C3E50]/50 rounded">
                         <strong className="text-purple-400 block mb-1">Strategy 3: The Income Pivot</strong>
-                        <span className="text-[#4A6572]">You cannot out-save a fundamental income deficit. Leverage your technical stack (React, FastAPI, Supabase) to take on freelance database management or UI development projects to inject immediate gross inflow into your ledger.</span>
+                        <span className="text-[#4A6572]">
+                          You cannot out-save a fundamental income deficit. You need to either increase your primary salary or generate a supplementary side-income of exactly <strong className="text-[#E2E8F0]">₹{Math.ceil(annualDeficit / 12).toLocaleString('en-IN')}/month</strong> just to break even.
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -422,7 +452,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           </div>
         </div>
 
-        {/* --- INCOME TAX RETURNS (ITR) NOTICE --- */}
         <div className="bg-[#181C28] border border-[#2C3E50]/50 p-4 text-xs text-[#4A6572] leading-relaxed">
           <strong className="text-[#E2E8F0] flex items-center gap-2 mb-1">
             <span>📄</span> Income Tax Returns (ITR) Filing Requirement
