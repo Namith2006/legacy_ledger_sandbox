@@ -15,7 +15,7 @@ import EmergencyRunway from './components/EmergencyRunway';
 import FireTracker from './components/FireTracker';
 import YearlyLedger from './components/YearlyLedger';
 import SinkingFunds from './components/SinkingFunds';
-import PhysicalCapital from './components/PhysicalCapital'; // <-- NEW IMPORT ADDED
+import PhysicalCapital from './components/PhysicalCapital';
 
 export type AssetClass = 'equity' | 'debt' | 'gold' | 'liquid';
 
@@ -156,7 +156,6 @@ const App: React.FC = () => {
       let displayInvested = yearlyInvested;
       let displayReturns = marketReturnsEarned;
 
-      // Adjust ledger display math for inflation
       if (inflationAdjusted) {
         const monthsElapsed = year * 12;
         const prevMonthsElapsed = (year - 1) * 12;
@@ -297,7 +296,7 @@ const App: React.FC = () => {
                 Sign Out
               </button>
             )}
-            <button onClick={downloadPDF} disabled={isExporting} className={`border border-[#2C3E50] text-[#E2E8F0] px-4 py-2 text-xs uppercase tracking-widest transition-colors flex items-center justify-center min-w-35 ${isExporting ? 'bg-[#2C3E50] opacity-70 cursor-wait' : 'hover:bg-[#2C3E50]'}`}>
+            <button onClick={downloadPDF} disabled={isExporting} className={`border border-[#2C3E50] text-[#E2E8F0] px-4 py-2 text-xs uppercase tracking-widest transition-colors flex items-center justify-center min-w-[140px] ${isExporting ? 'bg-[#2C3E50] opacity-70 cursor-wait' : 'hover:bg-[#2C3E50]'}`}>
               {isExporting ? 'Generating...' : 'Export PDF'}
             </button>
             <button onClick={syncToSupabase} disabled={isSyncing} className="bg-[#2C3E50] hover:bg-[#4A6572] text-[#E2E8F0] px-4 py-2 text-xs uppercase tracking-widest transition-colors flex items-center gap-2">
@@ -310,10 +309,10 @@ const App: React.FC = () => {
         {/* --- MAIN DASHBOARD WRAPPER --- */}
         <div ref={reportRef} className="flex flex-col gap-8">
           
-          {/* Top Section: Split Grid Layout */}
+          {/* TIER 1: Core Dashboard Split */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Left Column: Controls & Strategies */}
+            {/* Left Column: Inputs & Controls */}
             <div className="lg:col-span-4 flex flex-col gap-8">
               <RankBadge 
                 currentSavings={currentSavings} 
@@ -333,19 +332,9 @@ const App: React.FC = () => {
                 milestones={milestones} setMilestones={setMilestones}
                 inflationAdjusted={inflationAdjusted} setInflationAdjusted={setInflationAdjusted}
               />
-
-              <StrategyEngine 
-                currentSavings={currentSavings}
-                availableCash={availableCash}
-                targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
-                investments={investments}
-                setInvestments={setInvestments}
-              />
-
-              <PhysicalCapital expenses={expenses} />
             </div>
 
-            {/* Right Column: Core Trajectories & Metrics */}
+            {/* Right Column: Projections & Data */}
             <div className="lg:col-span-8 flex flex-col gap-8">
               <TrajectoryChart data={chartData} milestones={milestones} inflationAdjusted={inflationAdjusted} />
               
@@ -370,9 +359,20 @@ const App: React.FC = () => {
               <YearlyLedger ledgerData={ledgerData} />
             </div>
           </div> 
-          {/* End of Split Grid */}
+          
+          {/* TIER 2: Execution & Lifestyle Engines (50/50 Split) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-2">
+            <StrategyEngine 
+              currentSavings={currentSavings}
+              availableCash={availableCash}
+              targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
+              investments={investments}
+              setInvestments={setInvestments}
+            />
+            <PhysicalCapital expenses={expenses} />
+          </div>
 
-          {/* Bottom Section: Full Width Analytics */}
+          {/* TIER 3: Full-Width Analytics */}
           <div className="flex flex-col gap-8 mt-2">
             <TaxOptimizer 
               monthlyIncome={monthlyIncome} 
@@ -389,7 +389,6 @@ const App: React.FC = () => {
           </div>
 
         </div> 
-        {/* End of Main Dashboard Wrapper */}
 
       </div>
       
