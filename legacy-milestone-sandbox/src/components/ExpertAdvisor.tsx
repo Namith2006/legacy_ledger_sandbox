@@ -127,16 +127,19 @@ const ExpertAdvisor: React.FC<ExpertAdvisorProps> = ({
         </actions>
       `;
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', { // NOTE: If you switched to OpenRouter, change this URL to 'https://openrouter.ai/api/v1/chat/completions'
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_AI_API_KEY}`, 
+          // OpenRouter also highly recommends adding these two headers so you can see your app in their dashboard:
+          'HTTP-Referer': 'https://legacy-ledger.vercel.app', 
+          'X-Title': 'Legacy Ledger',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-120b', // <--- UPDATED MODEL STRING
+          model: 'openai/gpt-oss-120b',
           messages: [
-            // ... your system and user messages
+            // ... your existing system and user messages
           ],
           temperature: 0.1
         })
