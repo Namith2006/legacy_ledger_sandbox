@@ -14,7 +14,8 @@ import TaxOptimizer from './components/TaxOptimizer';
 import EmergencyRunway from './components/EmergencyRunway';
 import FireTracker from './components/FireTracker';
 import YearlyLedger from './components/YearlyLedger';
-import SinkingFunds from './components/SinkingFunds'; // <-- NEW IMPORT ADDED
+import SinkingFunds from './components/SinkingFunds';
+import PhysicalCapital from './components/PhysicalCapital'; // <-- NEW IMPORT ADDED
 
 export type AssetClass = 'equity' | 'debt' | 'gold' | 'liquid';
 
@@ -306,53 +307,73 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <div ref={reportRef} className="grid grid-cols-1 lg:grid-cols-12 gap-8 p-1">
-          <div className="lg:col-span-4">
+        {/* --- MAIN DASHBOARD WRAPPER --- */}
+        <div ref={reportRef} className="flex flex-col gap-8">
+          
+          {/* Top Section: Split Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            <RankBadge 
-              currentSavings={currentSavings} 
-              availableCash={availableCash} 
-              monthlyIncome={monthlyIncome} 
-            />
+            {/* Left Column: Controls & Strategies */}
+            <div className="lg:col-span-4 flex flex-col gap-8">
+              <RankBadge 
+                currentSavings={currentSavings} 
+                availableCash={availableCash} 
+                monthlyIncome={monthlyIncome} 
+              />
 
-            <ScenarioControls 
-              currentSavings={currentSavings} setCurrentSavings={setCurrentSavings}
-              monthlyIncome={monthlyIncome} setMonthlyIncome={setMonthlyIncome}
-              annualIncomeGrowth={annualIncomeGrowth} setAnnualIncomeGrowth={setAnnualIncomeGrowth}
-              expenses={expenses} setExpenses={setExpenses}
-              investments={investments} setInvestments={setInvestments}
-              totalExpenses={totalMonthlyExpenses} totalInvestments={totalMonthlyInvestments}
-              availableCash={availableCash} actualInvested={actualInvested}
-              marketReturns={marketReturns} setMarketReturns={setMarketReturns}
-              milestones={milestones} setMilestones={setMilestones}
-              inflationAdjusted={inflationAdjusted} setInflationAdjusted={setInflationAdjusted}
-            />
-          </div>
+              <ScenarioControls 
+                currentSavings={currentSavings} setCurrentSavings={setCurrentSavings}
+                monthlyIncome={monthlyIncome} setMonthlyIncome={setMonthlyIncome}
+                annualIncomeGrowth={annualIncomeGrowth} setAnnualIncomeGrowth={setAnnualIncomeGrowth}
+                expenses={expenses} setExpenses={setExpenses}
+                investments={investments} setInvestments={setInvestments}
+                totalExpenses={totalMonthlyExpenses} totalInvestments={totalMonthlyInvestments}
+                availableCash={availableCash} actualInvested={actualInvested}
+                marketReturns={marketReturns} setMarketReturns={setMarketReturns}
+                milestones={milestones} setMilestones={setMilestones}
+                inflationAdjusted={inflationAdjusted} setInflationAdjusted={setInflationAdjusted}
+              />
 
-          <div className="lg:col-span-8 flex flex-col gap-8">
-            <TrajectoryChart data={chartData} milestones={milestones} inflationAdjusted={inflationAdjusted} />
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="md:col-span-2">
-                <ResultsSummary 
-                  currentSavings={currentSavings} lifetimeInvested={lifetimeInvested} 
-                  lifetimeIncome={lifetimeIncome} finalWealth={finalWealth} 
-                  targetYear="Evaluated" totalExpenses={totalMonthlyExpenses} 
-                />
-              </div>
-              <div className="md:col-span-1">
-                <AssetAllocationChart investments={investments} />
-              </div>
+              <StrategyEngine 
+                currentSavings={currentSavings}
+                availableCash={availableCash}
+                targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
+                investments={investments}
+                setInvestments={setInvestments}
+              />
+
+              <PhysicalCapital expenses={expenses} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <EmergencyRunway currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
-              <FireTracker currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
+            {/* Right Column: Core Trajectories & Metrics */}
+            <div className="lg:col-span-8 flex flex-col gap-8">
+              <TrajectoryChart data={chartData} milestones={milestones} inflationAdjusted={inflationAdjusted} />
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-2">
+                  <ResultsSummary 
+                    currentSavings={currentSavings} lifetimeInvested={lifetimeInvested} 
+                    lifetimeIncome={lifetimeIncome} finalWealth={finalWealth} 
+                    targetYear="Evaluated" totalExpenses={totalMonthlyExpenses} 
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <AssetAllocationChart investments={investments} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <EmergencyRunway currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
+                <FireTracker currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
+              </div>
+
+              <YearlyLedger ledgerData={ledgerData} />
             </div>
+          </div> 
+          {/* End of Split Grid */}
 
-            <YearlyLedger ledgerData={ledgerData} />
-
-            {/* ---> MOVED INSIDE THE COL-SPAN-8 TO FIX THE LAYOUT GAP <--- */}
+          {/* Bottom Section: Full Width Analytics */}
+          <div className="flex flex-col gap-8 mt-2">
             <TaxOptimizer 
               monthlyIncome={monthlyIncome} 
               investments={investments} 
@@ -365,19 +386,13 @@ const App: React.FC = () => {
               currentSavings={currentSavings} 
               milestones={milestones} 
             />
-
           </div>
-        </div>
 
-        <StrategyEngine 
-          currentSavings={currentSavings}
-          availableCash={availableCash}
-          targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
-          investments={investments}
-          setInvestments={setInvestments}
-        />
+        </div> 
+        {/* End of Main Dashboard Wrapper */}
 
       </div>
+      
       <ExpertAdvisor 
         currentSavings={currentSavings} monthlyIncome={monthlyIncome}
         availableCash={availableCash} targetGoal={milestones.length > 0 ? milestones[milestones.length -1].target : 0}
