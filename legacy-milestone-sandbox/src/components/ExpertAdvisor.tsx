@@ -130,7 +130,7 @@ const ExpertAdvisor: React.FC<ExpertAdvisorProps> = ({
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_AI_API_KEY}`, 
+          'Authorization': `Bearer ${import.meta.env.local.VITE_AI_API_KEY}`, 
           // OpenRouter also highly recommends adding these two headers so you can see your app in their dashboard:
           'HTTP-Referer': 'https://legacy-ledger.vercel.app', 
           'X-Title': 'Legacy Ledger',
