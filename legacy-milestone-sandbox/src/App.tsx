@@ -357,21 +357,21 @@ const App: React.FC = () => {
               </div>
 
               <YearlyLedger ledgerData={ledgerData} />
+
+              {/* MOVED: Execution Engines now live inside the right column to act as a counter-weight to milestones! */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <StrategyEngine 
+                  currentSavings={currentSavings}
+                  availableCash={availableCash}
+                  targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
+                  investments={investments}
+                  setInvestments={setInvestments}
+                />
+                <PhysicalCapital expenses={expenses} />
+              </div>
             </div>
           </div> 
           
-          {/* TIER 2: Execution & Lifestyle Engines (50/50 Split) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-2">
-            <StrategyEngine 
-              currentSavings={currentSavings}
-              availableCash={availableCash}
-              targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
-              investments={investments}
-              setInvestments={setInvestments}
-            />
-            <PhysicalCapital expenses={expenses} />
-          </div>
-
           {/* TIER 3: Full-Width Analytics */}
           <div className="flex flex-col gap-8 mt-2">
             <TaxOptimizer 
@@ -381,7 +381,6 @@ const App: React.FC = () => {
               expenses={expenses} 
             />
 
-            <SinkingFunds />
             <SinkingFunds />
 
             <MilestoneBuckets 
