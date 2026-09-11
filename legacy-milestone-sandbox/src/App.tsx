@@ -334,7 +334,7 @@ const App: React.FC = () => {
               />
             </div>
 
-            {/* Right Column: Projections & Data */}
+            {/* Right Column: Projections, Data, & Execution */}
             <div className="lg:col-span-8 flex flex-col gap-8">
               <TrajectoryChart data={chartData} milestones={milestones} inflationAdjusted={inflationAdjusted} />
               
@@ -358,17 +358,15 @@ const App: React.FC = () => {
 
               <YearlyLedger ledgerData={ledgerData} />
 
-              {/* MOVED: Execution Engines now live inside the right column to act as a counter-weight to milestones! */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <StrategyEngine 
-                  currentSavings={currentSavings}
-                  availableCash={availableCash}
-                  targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
-                  investments={investments}
-                  setInvestments={setInvestments}
-                />
-                <PhysicalCapital expenses={expenses} />
-              </div>
+              {/* MOVED: Execution Engines now take full width of the right column to perfectly align with the Ledger */}
+              <StrategyEngine 
+                currentSavings={currentSavings}
+                availableCash={availableCash}
+                targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
+                investments={investments}
+                setInvestments={setInvestments}
+              />
+              <PhysicalCapital expenses={expenses} />
             </div>
           </div> 
           
