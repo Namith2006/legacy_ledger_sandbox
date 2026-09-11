@@ -5,7 +5,7 @@ interface TaxOptimizerProps {
   monthlyIncome: number;
   investments: CashFlowItem[];
   totalMonthlyExpenses?: number;
-  expenses?: CashFlowItem[]; // <-- NEW: Now it accepts raw expense data
+  expenses?: CashFlowItem[];
 }
 
 interface TaxSlab {
@@ -40,9 +40,9 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     annualExpenses,
     potentialSavings80C,
     activeTax,
-    highestExpense,      // <-- NEW: Extracted for dynamic advice
-    highestInvestment,   // <-- NEW: Extracted for dynamic advice
-    annualDeficit        // <-- NEW: Extracted for dynamic advice
+    highestExpense,
+    highestInvestment,
+    annualDeficit
   } = useMemo(() => {
     const grossIncome = monthlyIncome * 12;
     const standardDeduction = Math.min(grossIncome, 50000); 
@@ -114,7 +114,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     const recommended = finalTaxNew < finalTaxOld ? 'New Regime' : (finalTaxOld < finalTaxNew ? 'Old Regime' : 'Either Regime');
     const savings = Math.abs(finalTaxOld - finalTaxNew);
     
-    // Cash Flow & Optimization Metrics
     const activeTax = recommended === 'Old Regime' ? finalTaxOld : (recommended === 'New Regime' ? finalTaxNew : finalTaxOld);
     const effectiveTaxRate = grossIncome > 0 ? (activeTax / grossIncome) * 100 : 0;
     const annualExpenses = totalMonthlyExpenses * 12;
@@ -122,7 +121,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     const freeCashFlow = Math.max(0, unadjustedCashFlow);
     const annualDeficit = unadjustedCashFlow < 0 ? Math.abs(unadjustedCashFlow) : 0;
 
-    // --- Dynamic Target Hunters ---
     const highestExpense = expenses.length > 0 
       ? expenses.reduce((max, e) => {
           const eMonthly = e.frequency === 'annual' ? e.amount / 12 : e.amount;
@@ -180,139 +178,231 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Old Regime Card */}
+        {/* === OLD REGIME CARD === */}
         <div className={`p-4 border transition-all duration-300 ${recommended === 'Old Regime' || recommended === 'Either Regime' ? 'bg-[#181C28] border-[#10b981]' : 'bg-[#0F1216] border-[#2C3E50]/50 opacity-70'}`}>
           <h3 className="text-[#E2E8F0] font-medium mb-3 uppercase tracking-widest text-xs flex justify-between">
             Old Tax Regime
             {recommended === 'Old Regime' && <span className="text-[#10b981]">★</span>}
           </h3>
           
-          <div className="flex justify-between mb-2">
-            <span className="text-[#4A6572] text-sm">Est. Liability (incl. Cess)</span>
-            <span className={`font-bold ${recommended === 'Old Regime' || recommended === 'Either Regime' ? 'text-[#E2E8F0]' : 'text-[#8B3A3A]'}`}>
+          <div className="flex justify-between mb-2 pb-4 border-b border-[#2C3E50]/50">
+            <span className="text-[#4A6572] text-sm flex flex-col">
+              Est. Liability 
+              <span className="text-[9px] uppercase tracking-widest">Total tax you will owe</span>
+            </span>
+            <span className={`text-xl font-bold ${recommended === 'Old Regime' || recommended === 'Either Regime' ? 'text-[#E2E8F0]' : 'text-[#8B3A3A]'}`}>
               ₹{Math.round(finalTaxOld).toLocaleString('en-IN')}
             </span>
           </div>
 
           {showDetails && (
-            <div className="mt-4 mb-4 space-y-2 text-xs font-mono border-t border-b border-[#2C3E50]/50 py-3">
-              <div className="flex justify-between text-[#E2E8F0]">
-                <span>Gross Income</span>
-                <span>₹{annualIncome.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-[#8B3A3A]">
-                <span>Standard Deduction</span>
-                <span>-₹{standardDeduction.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-[#8B3A3A]">
-                <span>Sec 80C Deduction</span>
-                <span>-₹{deductions80C.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-[#E2E8F0] pt-2 border-t border-[#2C3E50]/30 font-semibold">
-                <span>Net Taxable Income</span>
-                <span>₹{taxableOld.toLocaleString('en-IN')}</span>
-              </div>
+            <div className="mt-4 mb-4 space-y-4 text-xs font-sans pb-4">
               
+              {/* STEP 1: Taxable Income */}
+              <div className="space-y-2">
+                <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>1️⃣</span> Arriving at Taxable Income</div>
+                
+                <div className="flex justify-between text-[#E2E8F0] items-center">
+                  <span className="flex flex-col">
+                    <span>Gross Annual Income</span>
+                    <span className="text-[9px] text-[#4A6572]">Your total yearly earnings</span>
+                  </span>
+                  <span className="font-mono">₹{annualIncome.toLocaleString('en-IN')}</span>
+                </div>
+                
+                <div className="flex justify-between text-[#10b981] items-center">
+                  <span className="flex flex-col">
+                    <span>Standard Deduction</span>
+                    <span className="text-[9px] text-[#10b981]/70">Flat exemption for salaried individuals</span>
+                  </span>
+                  <span className="font-mono">-₹{standardDeduction.toLocaleString('en-IN')}</span>
+                </div>
+                
+                <div className="flex justify-between text-[#10b981] items-center">
+                  <span className="flex flex-col">
+                    <span>Sec 80C Investments</span>
+                    <span className="text-[9px] text-[#10b981]/70">Eligible savings (Max allowed: ₹1.5L)</span>
+                  </span>
+                  <span className="font-mono">-₹{deductions80C.toLocaleString('en-IN')}</span>
+                </div>
+                
+                <div className="flex justify-between text-[#E2E8F0] pt-2 border-t border-[#2C3E50]/30 font-semibold items-center bg-[#2C3E50]/20 p-2 rounded">
+                  <span>Net Taxable Income</span>
+                  <span className="font-mono">₹{taxableOld.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* STEP 2: Slab Breakdown */}
               {slabsOld.length > 0 && (
-                <div className="pt-2 pb-2 pl-3 border-l border-[#2C3E50]/50 space-y-2 my-2 ml-1">
-                  <div className="text-[9px] text-[#4A6572] uppercase tracking-widest mb-1.5">Cash Brackets Applied</div>
-                  {slabsOld.map(slab => (
-                    <div className="flex justify-between text-[#8B3A3A] text-[11px]" key={slab.range}>
-                      <span className="flex flex-col">
-                        <span className="text-[#E2E8F0]">{slab.range}</span>
-                        <span className="text-[9px] text-[#4A6572]">{slab.rate} tax on chunk of ₹{slab.taxableAmount.toLocaleString('en-IN')}</span>
-                      </span>
-                      <span>+₹{Math.round(slab.tax).toLocaleString('en-IN')}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-[#E2E8F0] text-[11px] pt-2 mt-2 border-t border-[#2C3E50]/30 font-semibold">
-                    <span>Base Income Tax</span>
-                    <span>₹{Math.round(taxOld).toLocaleString('en-IN')}</span>
+                <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
+                  <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>2️⃣</span> Applying Income Brackets</div>
+                  
+                  <div className="bg-[#0F1216] border border-[#2C3E50]/50 rounded p-2 space-y-2">
+                    {slabsOld.map(slab => (
+                      <div className="flex justify-between text-[#E2E8F0] text-[11px] items-center border-b last:border-0 border-[#2C3E50]/30 pb-1 last:pb-0" key={slab.range}>
+                        <span className="flex flex-col">
+                          <span>Bracket: {slab.range}</span>
+                          <span className="text-[9px] text-[#4A6572]">Taxing {slab.rate} of the ₹{slab.taxableAmount.toLocaleString('en-IN')} that falls in this tier</span>
+                        </span>
+                        <span className="text-amber-500 font-mono">+₹{Math.round(slab.tax).toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between text-[#8B3A3A] text-[11px] pt-1">
-                    <span>Health & Education Cess (4%)</span>
-                    <span>+₹{Math.round(cessOld).toLocaleString('en-IN')}</span>
+
+                  <div className="flex justify-between text-[#E2E8F0] pt-1 items-center font-semibold">
+                    <span>Base Tax Computed</span>
+                    <span className="font-mono">₹{Math.round(taxOld).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               )}
-              {rebateOld && <div className="text-[#10b981] mt-2 italic flex items-center gap-1">✓ Full tax rebate applied under Sec 87A (Income ≤ 5L)</div>}
+
+              {/* STEP 3: Final Adjustments */}
+              <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
+                <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>3️⃣</span> Final Adjustments</div>
+                
+                <div className="flex justify-between text-[#E2E8F0] items-center">
+                  <span className="flex flex-col">
+                    <span>Health & Education Cess</span>
+                    <span className="text-[9px] text-[#4A6572]">Mandatory 4% government surcharge on Base Tax</span>
+                  </span>
+                  <span className="text-amber-500 font-mono">+₹{Math.round(cessOld).toLocaleString('en-IN')}</span>
+                </div>
+                
+                {rebateOld && (
+                  <div className="flex justify-between text-[#10b981] items-center pt-2 bg-[#10b981]/10 p-2 rounded mt-2 border border-[#10b981]/20">
+                    <span className="flex flex-col">
+                      <span className="font-semibold">Sec 87A Relief Rebate</span>
+                      <span className="text-[9px] text-[#10b981]/70">100% tax waived since Income is ≤ ₹5L</span>
+                    </span>
+                    <span className="font-mono">-₹{Math.round(finalTaxOld).toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
-          <div className="mt-4 pt-4 border-t border-[#2C3E50]">
+          
+          <div className="mt-2 pt-4 border-t border-[#2C3E50]">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-[#4A6572]">Sec 80C Utilized</span>
+              <span className="text-[#4A6572]">Sec 80C Utilization</span>
               <span className="text-[#E2E8F0]">₹{deductions80C.toLocaleString('en-IN')} / ₹1.5L</span>
             </div>
-            <div className="h-1 w-full bg-[#0F1216] rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-[#0F1216] rounded-full overflow-hidden border border-[#2C3E50]/50">
               <div className="h-full bg-[#10b981]" style={{ width: `${(deductions80C / 150000) * 100}%` }}></div>
             </div>
           </div>
         </div>
 
-        {/* New Regime Card */}
+        {/* === NEW REGIME CARD === */}
         <div className={`p-4 border transition-all duration-300 ${recommended === 'New Regime' || recommended === 'Either Regime' ? 'bg-[#181C28] border-[#10b981]' : 'bg-[#0F1216] border-[#2C3E50]/50 opacity-70'}`}>
           <h3 className="text-[#E2E8F0] font-medium mb-3 uppercase tracking-widest text-xs flex justify-between">
             New Tax Regime
             {recommended === 'New Regime' && <span className="text-[#10b981]">★</span>}
           </h3>
 
-          <div className="flex justify-between mb-2">
-            <span className="text-[#4A6572] text-sm">Est. Liability (incl. Cess)</span>
-            <span className={`font-bold ${recommended === 'New Regime' || recommended === 'Either Regime' ? 'text-[#E2E8F0]' : 'text-[#8B3A3A]'}`}>
+          <div className="flex justify-between mb-2 pb-4 border-b border-[#2C3E50]/50">
+            <span className="text-[#4A6572] text-sm flex flex-col">
+              Est. Liability 
+              <span className="text-[9px] uppercase tracking-widest">Total tax you will owe</span>
+            </span>
+            <span className={`text-xl font-bold ${recommended === 'New Regime' || recommended === 'Either Regime' ? 'text-[#E2E8F0]' : 'text-[#8B3A3A]'}`}>
               ₹{Math.round(finalTaxNew).toLocaleString('en-IN')}
             </span>
           </div>
 
           {showDetails && (
-            <div className="mt-4 mb-4 space-y-2 text-xs font-mono border-t border-b border-[#2C3E50]/50 py-3">
-              <div className="flex justify-between text-[#E2E8F0]">
-                <span>Gross Income</span>
-                <span>₹{annualIncome.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-[#8B3A3A]">
-                <span>Standard Deduction</span>
-                <span>-₹{standardDeduction.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-[#4A6572] opacity-70">
-                <span>Sec 80C Deduction</span>
-                <span>Not Allowed</span>
-              </div>
-              <div className="flex justify-between text-[#E2E8F0] pt-2 border-t border-[#2C3E50]/30 font-semibold">
-                <span>Net Taxable Income</span>
-                <span>₹{taxableNew.toLocaleString('en-IN')}</span>
+            <div className="mt-4 mb-4 space-y-4 text-xs font-sans pb-4">
+              
+              {/* STEP 1: Taxable Income */}
+              <div className="space-y-2">
+                <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>1️⃣</span> Arriving at Taxable Income</div>
+                
+                <div className="flex justify-between text-[#E2E8F0] items-center">
+                  <span className="flex flex-col">
+                    <span>Gross Annual Income</span>
+                    <span className="text-[9px] text-[#4A6572]">Your total yearly earnings</span>
+                  </span>
+                  <span className="font-mono">₹{annualIncome.toLocaleString('en-IN')}</span>
+                </div>
+                
+                <div className="flex justify-between text-[#10b981] items-center">
+                  <span className="flex flex-col">
+                    <span>Standard Deduction</span>
+                    <span className="text-[9px] text-[#10b981]/70">Flat exemption for salaried individuals</span>
+                  </span>
+                  <span className="font-mono">-₹{standardDeduction.toLocaleString('en-IN')}</span>
+                </div>
+                
+                <div className="flex justify-between text-[#4A6572] items-center opacity-60">
+                  <span className="flex flex-col">
+                    <span className="line-through">Sec 80C Investments</span>
+                    <span className="text-[9px]">Not permitted under the New Regime</span>
+                  </span>
+                  <span className="font-mono">₹0</span>
+                </div>
+                
+                <div className="flex justify-between text-[#E2E8F0] pt-2 border-t border-[#2C3E50]/30 font-semibold items-center bg-[#2C3E50]/20 p-2 rounded">
+                  <span>Net Taxable Income</span>
+                  <span className="font-mono">₹{taxableNew.toLocaleString('en-IN')}</span>
+                </div>
               </div>
 
+              {/* STEP 2: Slab Breakdown */}
               {slabsNew.length > 0 && (
-                <div className="pt-2 pb-2 pl-3 border-l border-[#2C3E50]/50 space-y-2 my-2 ml-1">
-                  <div className="text-[9px] text-[#4A6572] uppercase tracking-widest mb-1.5">Cash Brackets Applied</div>
-                  {slabsNew.map(slab => (
-                    <div className="flex justify-between text-[#8B3A3A] text-[11px]" key={slab.range}>
-                      <span className="flex flex-col">
-                        <span className="text-[#E2E8F0]">{slab.range}</span>
-                        <span className="text-[9px] text-[#4A6572]">{slab.rate} tax on chunk of ₹{slab.taxableAmount.toLocaleString('en-IN')}</span>
-                      </span>
-                      <span>+₹{Math.round(slab.tax).toLocaleString('en-IN')}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-[#E2E8F0] text-[11px] pt-2 mt-2 border-t border-[#2C3E50]/30 font-semibold">
-                    <span>Base Income Tax</span>
-                    <span>₹{Math.round(taxNew).toLocaleString('en-IN')}</span>
+                <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
+                  <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>2️⃣</span> Applying Income Brackets</div>
+                  
+                  <div className="bg-[#0F1216] border border-[#2C3E50]/50 rounded p-2 space-y-2">
+                    {slabsNew.map(slab => (
+                      <div className="flex justify-between text-[#E2E8F0] text-[11px] items-center border-b last:border-0 border-[#2C3E50]/30 pb-1 last:pb-0" key={slab.range}>
+                        <span className="flex flex-col">
+                          <span>Bracket: {slab.range}</span>
+                          <span className="text-[9px] text-[#4A6572]">Taxing {slab.rate} of the ₹{slab.taxableAmount.toLocaleString('en-IN')} that falls in this tier</span>
+                        </span>
+                        <span className="text-amber-500 font-mono">+₹{Math.round(slab.tax).toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between text-[#8B3A3A] text-[11px] pt-1">
-                    <span>Health & Education Cess (4%)</span>
-                    <span>+₹{Math.round(cessNew).toLocaleString('en-IN')}</span>
+
+                  <div className="flex justify-between text-[#E2E8F0] pt-1 items-center font-semibold">
+                    <span>Base Tax Computed</span>
+                    <span className="font-mono">₹{Math.round(taxNew).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               )}
-              {rebateNew && <div className="text-[#10b981] mt-2 italic flex items-center gap-1">✓ Full tax rebate applied under Sec 87A (Income ≤ 7L)</div>}
+
+              {/* STEP 3: Final Adjustments */}
+              <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
+                <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>3️⃣</span> Final Adjustments</div>
+                
+                <div className="flex justify-between text-[#E2E8F0] items-center">
+                  <span className="flex flex-col">
+                    <span>Health & Education Cess</span>
+                    <span className="text-[9px] text-[#4A6572]">Mandatory 4% government surcharge on Base Tax</span>
+                  </span>
+                  <span className="text-amber-500 font-mono">+₹{Math.round(cessNew).toLocaleString('en-IN')}</span>
+                </div>
+                
+                {rebateNew && (
+                  <div className="flex justify-between text-[#10b981] items-center pt-2 bg-[#10b981]/10 p-2 rounded mt-2 border border-[#10b981]/20">
+                    <span className="flex flex-col">
+                      <span className="font-semibold">Sec 87A Relief Rebate</span>
+                      <span className="text-[9px] text-[#10b981]/70">100% tax waived since Income is ≤ ₹7L</span>
+                    </span>
+                    <span className="font-mono">-₹{Math.round(finalTaxNew).toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
-          <div className="mt-4 pt-4 border-t border-[#2C3E50]">
+          
+          <div className="mt-2 pt-4 border-t border-[#2C3E50]">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-[#4A6572]">Sec 80C Utilized</span>
-              <span className="text-[#4A6572] line-through">Not Applicable</span>
+              <span className="text-[#4A6572]">Sec 80C Utilization</span>
+              <span className="text-[#4A6572] italic text-[10px]">Disabled in New Regime</span>
             </div>
-            <div className="h-1 w-full bg-[#0F1216] rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-[#0F1216] rounded-full overflow-hidden border border-[#2C3E50]/50">
               <div className="h-full bg-[#2C3E50]" style={{ width: `0%` }}></div>
             </div>
           </div>
@@ -452,7 +542,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           </div>
         </div>
 
-        <div className="bg-[#181C28] border border-[#2C3E50]/50 p-4 text-xs text-[#4A6572] leading-relaxed">
+        <div className="bg-[#181C28] border border-[#2C3E50]/50 p-4 text-xs text-[#4A6572] leading-relaxed mt-2">
           <strong className="text-[#E2E8F0] flex items-center gap-2 mb-1">
             <span>📄</span> Income Tax Returns (ITR) Filing Requirement
           </strong>
