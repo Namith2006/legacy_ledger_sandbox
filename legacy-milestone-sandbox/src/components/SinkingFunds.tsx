@@ -3,72 +3,144 @@ import React, { useState } from 'react';
 interface Vault {
   id: string;
   name: string;
-  target: number;
-  current: number;
+  currentAmount: number;
+  targetAmount: number;
+  targetDate: string; // YYYY-MM format
   color: string;
 }
 
 const SinkingFunds: React.FC = () => {
-  // Initializing with realistic short-term goals
-  const [vaults] = useState<Vault[]>([
-    { id: 'v1', name: 'Parental Spoil Fund', target: 200000, current: 45000, color: 'bg-purple-500' },
-    { id: 'v2', name: 'Hardware Refresh', target: 150000, current: 150000, color: 'bg-blue-500' },
-    { id: 'v3', name: 'Emergency Liquid', target: 300000, current: 120000, color: 'bg-[#10b981]' }
+  // Initializing with the exact data from your screenshot, but adding the crucial 'targetDate' context
+  const [vaults, setVaults] = useState<Vault[]>([
+    { 
+      id: '1', 
+      name: 'Parental Spoil Fund', 
+      currentAmount: 45000, 
+      targetAmount: 200000, 
+      targetDate: '2027-10', // Example future date
+      color: 'bg-purple-500' 
+    },
+    { 
+      id: '2', 
+      name: 'Hardware Refresh', 
+      currentAmount: 150000, 
+      targetAmount: 150000, 
+      targetDate: '2026-12', 
+      color: 'bg-blue-500' 
+    },
+    { 
+      id: '3', 
+      name: 'Emergency Liquid', 
+      currentAmount: 120000, 
+      targetAmount: 300000, 
+      targetDate: '2027-03', 
+      color: 'bg-emerald-500' 
+    }
   ]);
 
+  // Helper function to calculate how many months are left until the target date
+  const getMonthsRemaining = (targetDate: string) => {
+    const now = new Date();
+    const target = new Date(`${targetDate}-01`);
+    const months = (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth());
+    return Math.max(0, months);
+  };
+
   return (
-    <div className="bg-[#181C28] border border-[#2C3E50] p-6 mt-6">
-      <div className="flex justify-between items-end mb-6">
-        <div>
-          <h2 className="text-[#E2E8F0] text-lg font-semibold tracking-wide flex items-center gap-2">
-            <span>🏦</span> Sinking Fund Vaults
-          </h2>
-          <p className="text-[#4A6572] text-sm mt-1">Short-term liquidity reserves</p>
-        </div>
+    <div className="bg-[#0F1216] border border-[#2C3E50] p-6">
+      
+      {/* Header Section */}
+      <div className="mb-6">
+        <h2 className="text-[#E2E8F0] text-lg font-semibold tracking-wide flex items-center gap-2">
+          <span>🏦</span> Targeted Vaults (Sinking Funds)
+        </h2>
+        <p className="text-[#4A6572] text-sm mt-1">
+          Predictable cash reserves for known future expenses.
+        </p>
       </div>
 
+      {/* Explanatory Banner */}
+      <div className="bg-[#2C3E50]/20 border border-[#2C3E50]/50 rounded p-4 mb-6 text-sm text-[#E2E8F0] leading-relaxed">
+        <strong className="text-blue-400 font-semibold mb-1 block flex items-center gap-2">
+          <span>💡</span> What is a Sinking Fund?
+        </strong>
+        <p className="text-[#4A6572]">
+          Instead of relying on unpredictable stock market returns or credit cards for large, upcoming expenses, you "sink" a small amount of money into a dedicated cash vault every month. 
+          For highly personal, non-negotiable goals—like securing the funds to properly take care of your parents—these vaults ensure the money is safe, liquid, and ready exactly when you need it.
+        </p>
+      </div>
+
+      {/* Vaults Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {vaults.map((vault) => {
-          const progress = Math.min(100, (vault.current / vault.target) * 100);
-          const isComplete = progress >= 100;
+          const percentage = Math.min(100, (vault.currentAmount / vault.targetAmount) * 100);
+          const isFullyFunded = vault.currentAmount >= vault.targetAmount;
+          const monthsLeft = getMonthsRemaining(vault.targetDate);
+          
+          // Calculate required monthly contribution
+          const shortfall = vault.targetAmount - vault.currentAmount;
+          const monthlyRequired = monthsLeft > 0 ? Math.ceil(shortfall / monthsLeft) : 0;
 
           return (
-            <div key={vault.id} className="bg-[#0F1216] border border-[#2C3E50]/50 p-4 relative overflow-hidden">
-              {/* Subtle background glow for completed vaults */}
-              {isComplete && (
-                <div className={`absolute -right-4 -top-4 w-16 h-16 ${vault.color} blur-2xl opacity-20`}></div>
-              )}
+            <div key={vault.id} className={`bg-[#181C28] border p-5 transition-all duration-300 flex flex-col justify-between ${isFullyFunded ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'border-[#2C3E50]'}`}>
               
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-[#E2E8F0] font-medium text-xs uppercase tracking-widest z-10">
-                  {vault.name}
-                </h3>
-                {isComplete && <span className="text-[#10b981] text-xs">✓</span>}
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-[#E2E8F0] font-bold text-xs uppercase tracking-widest leading-tight pr-4">
+                    {vault.name}
+                  </h3>
+                  {isFullyFunded && (
+                    <span className="text-blue-400 text-sm" title="Fully Funded">✓</span>
+                  )}
+                </div>
+
+                <div className="mb-1">
+                  <span className="text-2xl font-bold text-[#E2E8F0]">
+                    ₹{vault.currentAmount.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="text-[10px] uppercase tracking-widest text-[#4A6572] mb-5">
+                  of ₹{vault.targetAmount.toLocaleString('en-IN')} Goal
+                </div>
               </div>
 
-              <div className="mb-4 z-10 relative">
-                <div className="text-xl font-bold text-[#E2E8F0]">
-                  ₹{vault.current.toLocaleString('en-IN')}
+              <div>
+                {/* Progress Bar */}
+                <div className="h-1.5 w-full bg-[#0F1216] rounded-full overflow-hidden border border-[#2C3E50]/50 mb-2">
+                  <div 
+                    className={`h-full ${vault.color} transition-all duration-1000`} 
+                    style={{ width: `${percentage}%` }}
+                  ></div>
                 </div>
-                <div className="text-[10px] text-[#4A6572] uppercase tracking-widest mt-1">
-                  of ₹{vault.target.toLocaleString('en-IN')} Goal
+
+                <div className="flex justify-between items-center text-[10px] text-[#4A6572] uppercase tracking-widest font-mono mb-4">
+                  <span>{percentage.toFixed(1)}% Funded</span>
+                  {monthsLeft > 0 && (
+                    <span>{monthsLeft} Months Left</span>
+                  )}
+                </div>
+
+                {/* Actionable Insights */}
+                <div className={`p-3 rounded text-xs border ${isFullyFunded ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-[#0F1216] border-[#2C3E50]/50 text-[#E2E8F0]'}`}>
+                  {isFullyFunded ? (
+                    <div className="flex flex-col">
+                      <span className="font-semibold uppercase tracking-widest text-[10px] mb-1">Status: Ready</span>
+                      <span>Target achieved. Funds are ready for deployment.</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      <span className="text-[#4A6572] uppercase tracking-widest text-[10px] mb-1">Action Required</span>
+                      <span>Save <strong className={vault.color.replace('bg-', 'text-')}>₹{monthlyRequired.toLocaleString('en-IN')}/mo</strong> to hit your target on time.</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="relative h-1.5 w-full bg-[#181C28] rounded-full overflow-hidden">
-                <div 
-                  className={`absolute top-0 left-0 h-full ${vault.color} transition-all duration-1000`}
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-              
-              <div className="mt-2 text-right text-[10px] text-[#4A6572] font-mono">
-                {progress.toFixed(1)}% Funded
-              </div>
             </div>
           );
         })}
       </div>
+
     </div>
   );
 };
