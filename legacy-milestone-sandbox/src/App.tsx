@@ -380,10 +380,11 @@ const App: React.FC = () => {
               expenses={expenses} 
             />
 
-            {/* ---> AUDITOR ADDED HERE <--- */}
+            {/* AUDITOR ENHANCED WITH AVAILABLE CASH */}
             <InvestmentAuditor 
               investments={investments} 
               monthlyIncome={monthlyIncome} 
+              availableCash={availableCash}
             />
 
             <SinkingFunds />
