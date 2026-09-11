@@ -16,6 +16,7 @@ import FireTracker from './components/FireTracker';
 import YearlyLedger from './components/YearlyLedger';
 import SinkingFunds from './components/SinkingFunds';
 import PhysicalCapital from './components/PhysicalCapital';
+import InvestmentAuditor from './components/InvestmentAuditor';
 
 export type AssetClass = 'equity' | 'debt' | 'gold' | 'liquid';
 
@@ -377,6 +378,12 @@ const App: React.FC = () => {
               investments={investments} 
               totalMonthlyExpenses={totalMonthlyExpenses} 
               expenses={expenses} 
+            />
+
+            {/* ---> AUDITOR ADDED HERE <--- */}
+            <InvestmentAuditor 
+              investments={investments} 
+              monthlyIncome={monthlyIncome} 
             />
 
             <SinkingFunds />

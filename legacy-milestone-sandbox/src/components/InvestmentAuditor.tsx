@@ -13,16 +13,31 @@ interface InvestmentAuditorProps {
   monthlyIncome: number;
 }
 
+// 1. ADDED TYPESCRIPT INTERFACES TO FIX THE ANY[] ERRORS
+interface AuditAlert {
+  target: string;
+  issue: string;
+  math: string;
+  verdict: string;
+  pivot: string;
+}
+
+interface AuditPraise {
+  target: string;
+  reason: string;
+  taxNote: string;
+}
+
 const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, monthlyIncome }) => {
   const annualIncome = monthlyIncome * 12;
   
-  // Estimate tax slab (Simplified for analysis logic)
   const taxSlab = annualIncome > 1500000 ? 0.30 : (annualIncome > 1000000 ? 0.20 : (annualIncome > 500000 ? 0.10 : 0));
   const slabPercentage = taxSlab * 100;
 
   const analysis = useMemo(() => {
-    const alerts = [];
-    const praises = [];
+    // 2. APPLIED THE INTERFACES TO THE ARRAYS
+    const alerts: AuditAlert[] = [];
+    const praises: AuditPraise[] = [];
     let totalInefficientCapital = 0;
 
     investments.forEach(inv => {
@@ -30,7 +45,6 @@ const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, mont
       const name = inv.name.toLowerCase();
       const assetClass = inv.assetClass || 'liquid';
 
-      // 1. Identifying the "Wealth Killers" (Waste)
       if (name.includes('fd') || name.includes('fixed deposit') || name.includes('rd')) {
         const grossReturn = 7.0;
         const netReturn = grossReturn * (1 - taxSlab);
@@ -63,8 +77,6 @@ const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, mont
           pivot: 'Keep only 6 months emergency funds here. Sweep the rest into high-growth assets.'
         });
       }
-
-      // 2. Evaluating Gold Holdings
       else if (assetClass === 'gold' || name.includes('gold')) {
         if (name.includes('digital') || name.includes('physical')) {
           alerts.push({
@@ -82,8 +94,6 @@ const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, mont
           });
         }
       }
-
-      // 3. Identifying High-Efficiency Compounders (Profit)
       else if (assetClass === 'equity' || name.includes('index') || name.includes('mutual fund') || name.includes('equity')) {
         let specializedNote = '';
         if (name.includes('defense') || name.includes('psu') || name.includes('bel')) {
@@ -106,7 +116,7 @@ const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, mont
     });
 
     return { alerts, praises, totalInefficientCapital };
-  }, [investments, taxSlab]);
+  }, [investments, taxSlab, slabPercentage]);
 
   if (investments.length === 0) return null;
 
@@ -135,8 +145,6 @@ const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, mont
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Sub-Optimal / Waste Column */}
           <div className="space-y-4">
             <h4 className="text-amber-500 text-xs font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2">
               Action Required (Waste)
@@ -165,7 +173,6 @@ const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, mont
             )}
           </div>
 
-          {/* High-Performance Column */}
           <div className="space-y-4">
             <h4 className="text-[#10b981] text-xs font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2">
               Optimal Allocations (Keep)
@@ -187,7 +194,6 @@ const InvestmentAuditor: React.FC<InvestmentAuditorProps> = ({ investments, mont
               ))
             )}
           </div>
-
         </div>
       </div>
     </div>
