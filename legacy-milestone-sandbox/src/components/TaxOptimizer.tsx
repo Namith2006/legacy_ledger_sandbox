@@ -18,7 +18,8 @@ interface TaxSlab {
 const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments, totalMonthlyExpenses = 0, expenses = [] }) => {
   const { 
     annualIncome, 
-    standardDeduction,
+    stdDedOld,
+    stdDedNew,
     deductions80C, 
     taxableOld,
     slabsOld,
@@ -45,7 +46,10 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     annualDeficit
   } = useMemo(() => {
     const grossIncome = monthlyIncome * 12;
-    const standardDeduction = Math.min(grossIncome, 50000); 
+    
+    // Split deductions based on regime rules for salaried individuals
+    const stdDedOld = Math.min(grossIncome, 50000); 
+    const stdDedNew = Math.min(grossIncome, 75000); 
     
     const eligible80CKeywords = ['ppf', 'epf', 'elss', 'life insurance', 'lic', 'tax saver'];
     
@@ -61,7 +65,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
     // --- OLD REGIME MATH ---
     const calculateOldTax = (deduction: number) => {
-      const taxable = Math.max(0, grossIncome - standardDeduction - deduction);
+      const taxable = Math.max(0, grossIncome - stdDedOld - deduction);
       if (taxable <= 500000) return 0;
       let tax = 0;
       if (taxable > 1000000) tax += (taxable - 1000000) * 0.30;
@@ -70,7 +74,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       return tax * 1.04;
     };
 
-    const taxableOld = Math.max(0, grossIncome - standardDeduction - deductions80C);
+    const taxableOld = Math.max(0, grossIncome - stdDedOld - deductions80C);
     const finalTaxOld = calculateOldTax(deductions80C);
     const optimalOldTax = calculateOldTax(150000);
     const potentialSavings80C = Math.max(0, finalTaxOld - optimalOldTax);
@@ -90,20 +94,23 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     }
     const cessOld = taxOldBase * 0.04; 
 
-    // --- NEW REGIME MATH ---
-    const taxableNew = Math.max(0, grossIncome - standardDeduction); 
+    // --- NEW REGIME MATH (UPDATED SLABS & REBATE) ---
+    const taxableNew = Math.max(0, grossIncome - stdDedNew); 
     let taxNewBase = 0;
     let rebateNew = false;
     const slabsNewData: TaxSlab[] = [];
 
-    if (taxableNew <= 700000) {
-      rebateNew = taxableNew > 300000;
+    // New 87A Rebate threshold is ₹12L
+    if (taxableNew <= 1200000) {
+      rebateNew = taxableNew > 400000;
     } else {
-      if (taxableNew > 1500000) { slabsNewData.push({ range: 'Above ₹15L', rate: '30%', taxableAmount: taxableNew - 1500000, tax: (taxableNew - 1500000) * 0.30 }); }
-      if (taxableNew > 1200000) { slabsNewData.push({ range: '₹12L - ₹15L', rate: '20%', taxableAmount: Math.min(taxableNew, 1500000) - 1200000, tax: (Math.min(taxableNew, 1500000) - 1200000) * 0.20 }); }
-      if (taxableNew > 900000) { slabsNewData.push({ range: '₹9L - ₹12L', rate: '15%', taxableAmount: Math.min(taxableNew, 1200000) - 900000, tax: (Math.min(taxableNew, 1200000) - 900000) * 0.15 }); }
-      if (taxableNew > 600000) { slabsNewData.push({ range: '₹6L - ₹9L', rate: '10%', taxableAmount: Math.min(taxableNew, 900000) - 600000, tax: (Math.min(taxableNew, 900000) - 600000) * 0.10 }); }
-      if (taxableNew > 300000) { slabsNewData.push({ range: '₹3L - ₹6L', rate: '5%', taxableAmount: Math.min(taxableNew, 600000) - 300000, tax: (Math.min(taxableNew, 600000) - 300000) * 0.05 }); }
+      // New 4-Lakh Brackets
+      if (taxableNew > 2400000) { slabsNewData.push({ range: 'Above ₹24L', rate: '30%', taxableAmount: taxableNew - 2400000, tax: (taxableNew - 2400000) * 0.30 }); }
+      if (taxableNew > 2000000) { slabsNewData.push({ range: '₹20L - ₹24L', rate: '25%', taxableAmount: Math.min(taxableNew, 2400000) - 2000000, tax: (Math.min(taxableNew, 2400000) - 2000000) * 0.25 }); }
+      if (taxableNew > 1600000) { slabsNewData.push({ range: '₹16L - ₹20L', rate: '20%', taxableAmount: Math.min(taxableNew, 2000000) - 1600000, tax: (Math.min(taxableNew, 2000000) - 1600000) * 0.20 }); }
+      if (taxableNew > 1200000) { slabsNewData.push({ range: '₹12L - ₹16L', rate: '15%', taxableAmount: Math.min(taxableNew, 1600000) - 1200000, tax: (Math.min(taxableNew, 1600000) - 1200000) * 0.15 }); }
+      if (taxableNew > 800000) { slabsNewData.push({ range: '₹8L - ₹12L', rate: '10%', taxableAmount: Math.min(taxableNew, 1200000) - 800000, tax: (Math.min(taxableNew, 1200000) - 800000) * 0.10 }); }
+      if (taxableNew > 400000) { slabsNewData.push({ range: '₹4L - ₹8L', rate: '5%', taxableAmount: Math.min(taxableNew, 800000) - 400000, tax: (Math.min(taxableNew, 800000) - 400000) * 0.05 }); }
       slabsNewData.reverse(); 
       taxNewBase = slabsNewData.reduce((sum, slab) => sum + slab.tax, 0);
     }
@@ -138,7 +145,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       : null;
 
     return { 
-      annualIncome: grossIncome, standardDeduction, deductions80C, 
+      annualIncome: grossIncome, stdDedOld, stdDedNew, deductions80C, 
       taxableOld, slabsOld: slabsOldData, taxOld: taxOldBase, cessOld, finalTaxOld, rebateOld,
       taxableNew, slabsNew: slabsNewData, taxNew: taxNewBase, cessNew, finalTaxNew, rebateNew,
       recommended, savings, effectiveTaxRate, freeCashFlow, totalAnnualInvested, annualExpenses, potentialSavings80C, activeTax,
@@ -198,7 +205,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           {showDetails && (
             <div className="mt-4 mb-4 space-y-4 text-xs font-sans pb-4">
               
-              {/* STEP 1: Taxable Income */}
               <div className="space-y-2">
                 <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>1️⃣</span> Arriving at Taxable Income</div>
                 
@@ -215,7 +221,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                     <span>Standard Deduction</span>
                     <span className="text-[9px] text-[#10b981]/70">Flat exemption for salaried individuals</span>
                   </span>
-                  <span className="font-mono">-₹{standardDeduction.toLocaleString('en-IN')}</span>
+                  <span className="font-mono">-₹{stdDedOld.toLocaleString('en-IN')}</span>
                 </div>
                 
                 <div className="flex justify-between text-[#10b981] items-center">
@@ -232,7 +238,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 </div>
               </div>
 
-              {/* STEP 2: Slab Breakdown */}
               {slabsOld.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
                   <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>2️⃣</span> Applying Income Brackets</div>
@@ -256,7 +261,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 </div>
               )}
 
-              {/* STEP 3: Final Adjustments */}
               <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
                 <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>3️⃣</span> Final Adjustments</div>
                 
@@ -313,7 +317,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           {showDetails && (
             <div className="mt-4 mb-4 space-y-4 text-xs font-sans pb-4">
               
-              {/* STEP 1: Taxable Income */}
               <div className="space-y-2">
                 <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>1️⃣</span> Arriving at Taxable Income</div>
                 
@@ -328,9 +331,9 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 <div className="flex justify-between text-[#10b981] items-center">
                   <span className="flex flex-col">
                     <span>Standard Deduction</span>
-                    <span className="text-[9px] text-[#10b981]/70">Flat exemption for salaried individuals</span>
+                    <span className="text-[9px] text-[#10b981]/70">Flat ₹75k exemption for salaried individuals</span>
                   </span>
-                  <span className="font-mono">-₹{standardDeduction.toLocaleString('en-IN')}</span>
+                  <span className="font-mono">-₹{stdDedNew.toLocaleString('en-IN')}</span>
                 </div>
                 
                 <div className="flex justify-between text-[#4A6572] items-center opacity-60">
@@ -347,7 +350,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 </div>
               </div>
 
-              {/* STEP 2: Slab Breakdown */}
               {slabsNew.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
                   <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>2️⃣</span> Applying Income Brackets</div>
@@ -371,7 +373,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 </div>
               )}
 
-              {/* STEP 3: Final Adjustments */}
               <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
                 <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>3️⃣</span> Final Adjustments</div>
                 
@@ -387,7 +388,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                   <div className="flex justify-between text-[#10b981] items-center pt-2 bg-[#10b981]/10 p-2 rounded mt-2 border border-[#10b981]/20">
                     <span className="flex flex-col">
                       <span className="font-semibold">Sec 87A Relief Rebate</span>
-                      <span className="text-[9px] text-[#10b981]/70">100% tax waived since Income is ≤ ₹7L</span>
+                      <span className="text-[9px] text-[#10b981]/70">100% tax waived since Income is ≤ ₹12L</span>
                     </span>
                     <span className="font-mono">-₹{Math.round(finalTaxNew).toLocaleString('en-IN')}</span>
                   </div>
