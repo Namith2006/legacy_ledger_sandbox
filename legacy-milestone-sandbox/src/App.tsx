@@ -357,9 +357,9 @@ const App: React.FC = () => {
                 <FireTracker currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
               </div>
 
-              <YearlyLedger ledgerData={ledgerData} />
+              {/* ---> UPDATE THIS LINE <--- */}
+              <YearlyLedger ledgerData={ledgerData} inflationAdjusted={inflationAdjusted} />
 
-              {/* MOVED: Execution Engines now take full width of the right column to perfectly align with the Ledger */}
               <StrategyEngine 
                 currentSavings={currentSavings}
                 availableCash={availableCash}
