@@ -383,6 +383,7 @@ const App: React.FC = () => {
 
             <MilestoneBuckets 
               currentSavings={currentSavings} 
+              finalWealth={finalWealth} 
               milestones={milestones} 
             />
           </div>
