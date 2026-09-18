@@ -172,7 +172,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       const node = taxReportRef.current;
       
       // 1. Force the capture dimensions to the full scrollable height of the node.
-      // This prevents the browser scroll position from cutting off the top.
       const dataUrl = await toPng(node, { 
         backgroundColor: '#0F1216', 
         pixelRatio: 2,
@@ -184,7 +183,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       const imgProps = tempPdf.getImageProperties(dataUrl);
       
       // 2. Set the PDF page format dynamically to match the image exactly.
-      // This creates one continuous page, preventing the A4 cut-off at the bottom.
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
@@ -625,66 +623,65 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs">
             
-            {/* 1. ITR Info */}
+            {/* 1. ITR Filing */}
             <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">1. Income Tax Return (ITR) Information</h4>
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">1. Income Tax Return (ITR) Filing</h4>
               <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Assessment Year:</span> <span>2027-28</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Previous Year:</span> <span>2026-27</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Method of Accounting:</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">ITR Form Targeted:</span> <span className="text-amber-500/50">[ITR-1 / ITR-2 / ITR-3]</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">AY & PY Covered:</span> <span>AY 2027-28 | PY 2026-27</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Type of ITR Form:</span> <span className="text-amber-500/50">[ITR-1/2/3/4]</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Filing Date & Due Date Status:</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Revised Return Details:</span> <span className="text-amber-500/50">[If any]</span></div>
               </div>
             </div>
 
-            {/* 4. Tax Computation (Dynamically Populated) */}
+            {/* 2. Tax Payments */}
             <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">4. Tax Computation & Adjustments</h4>
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">2. Tax Payments</h4>
               <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Selected Tax Regime:</span> <span className="text-[#10b981] font-bold">{recommended}</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Gross Total Income:</span> <span>₹{annualIncome.toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Chap VI-A (80C, 80D, etc.):</span> <span>{recommended === 'New Regime' ? 'Not Applicable' : `₹${deductions80C.toLocaleString('en-IN')}`}</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Adjustments / Disallowances:</span> <span className="text-amber-500/50">[Review req.]</span></div>
-                <div className="flex justify-between font-bold pt-2 border-t border-[#2C3E50]/30"><span className="text-[#E2E8F0]">Net Taxable Income:</span> <span className="text-[#E2E8F0]">₹{(recommended === 'New Regime' ? taxableNew : taxableOld).toLocaleString('en-IN')}</span></div>
-              </div>
-            </div>
-
-            {/* 2. TDS/TCS */}
-            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">2. TDS / TCS Reconciliation</h4>
-              <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Form 16 / 16A collected</div>
-                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Form 26AS / AIS reconciled</div>
-                <div className="flex justify-between pt-2"><span className="text-[#E2E8F0]">Defaults/Delays in TDS:</span> <span className="text-amber-500/50">[CA Review]</span></div>
-              </div>
-            </div>
-
-            {/* 3. Advance Tax */}
-            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">3. Advance & Self-Assessment Tax</h4>
-              <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Advance Tax Paid (Q1-Q4):</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Advance Tax (Dates/Amounts):</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
                 <div className="flex justify-between"><span className="text-[#E2E8F0]">Self-Assessment Tax Paid:</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Sec 234B/234C Interest:</span> <span className="text-amber-500/50">[Auto-calc at filing]</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Sec 234B/234C Interest:</span> <span className="text-amber-500/50">[Auto-calc]</span></div>
               </div>
             </div>
 
-            {/* 5. GST */}
+            {/* 3. TDS/TCS Compliance */}
             <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">5. GST & Indirect Taxes</h4>
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">3. TDS/TCS Compliance</h4>
               <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">GST Registration Status:</span> <span className="text-amber-500/50">[Applicable?]</span></div>
-                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> GST Turnover reconciled with Books</div>
-                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Input Tax Credit (ITC) validated</div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">TDS Deducted & Deposited:</span> <span className="text-amber-500/50">[Review req.]</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Defaults (Delays/Shortfalls):</span> <span className="text-amber-500/50">[Check 26AS]</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Certificates (Form 16/16A):</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
               </div>
             </div>
 
-            {/* 6. Return Filing & 7. Special Txns */}
+            {/* 4. Computation of Taxable Income */}
             <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">6. Compliance & 7. Special Txns</h4>
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">4. Computation of Taxable Income</h4>
               <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Target ITR Filing Date:</span> <span>July 31, 2027</span></div>
-                <div className="flex items-center gap-2 pt-2 border-t border-[#2C3E50]/30"><input type="checkbox" className="accent-[#2C3E50]" /> No cash txns above prescribed limits (Sec 269SS/T)</div>
-                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Related party txns (Transfer Pricing) documented</div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Gross Total / Business Income:</span> <span>₹{annualIncome.toLocaleString('en-IN')}</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Adjustments (Sec 40A, 43B):</span> <span className="text-amber-500/50">[Review req.]</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Chap VI-A (80C, 80D, etc.):</span> <span>{recommended === 'New Regime' ? 'N/A (New Regime)' : `₹${deductions80C.toLocaleString('en-IN')}`}</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Set-off & C/F of Losses:</span> <span className="text-amber-500/50">[Review req.]</span></div>
+              </div>
+            </div>
+
+            {/* 5. Indirect Tax Linkages */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">5. Indirect Tax Linkages</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> GST turnover reconciliation with books</div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Input Tax Credit (ITC) claimed validated</div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Mismatch between GST returns & accounts</div>
+              </div>
+            </div>
+
+            {/* 6. Special Transactions */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">6. Special Transactions</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Related-party transactions (transfer pricing)</div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Cash transactions above prescribed limits</div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Loans/advances subject to reporting</div>
               </div>
             </div>
 
