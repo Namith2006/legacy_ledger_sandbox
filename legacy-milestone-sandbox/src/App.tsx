@@ -53,7 +53,7 @@ const App: React.FC = () => {
   const [inflationAdjusted, setInflationAdjusted] = useState<boolean>(() => loadState('inflation', false));
   
   const [marketReturns, setMarketReturns] = useState<MarketReturns>(() => loadState('marketReturns', {
-    equity: 12, debt: 8, gold: 10, liquid: 5
+    equity: 11.7, debt: 7.0, gold: 16.5, liquid: 4.0
   }));
   
   const [expenses, setExpenses] = useState<CashFlowItem[]>(() => loadState('expenses', [
@@ -182,7 +182,8 @@ const App: React.FC = () => {
     return { lifetimeIncome: incomeTotal, lifetimeInvested: investedTotal, chartData: data, ledgerData: lData };
   }, [currentSavings, monthlyIncome, totalMonthlyExpenses, totalMonthlyInvestments, investments, marketReturns, annualIncomeGrowth, inflationAdjusted]);
 
-  const finalWealth = chartData.length > 0 ? chartData[chartData.length - 1].value : 0;
+  const finalWealth10Y = ledgerData.length > 0 ? ledgerData[ledgerData.length - 1].endBalance : 0;
+  const totalInvested10Y = ledgerData.reduce((sum, row) => sum + row.invested, 0) + currentSavings;
 
   const downloadPDF = async () => {
     if (!reportRef.current) return;
@@ -342,8 +343,8 @@ const App: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="md:col-span-2">
                   <ResultsSummary 
-                    currentSavings={currentSavings} lifetimeInvested={lifetimeInvested} 
-                    lifetimeIncome={lifetimeIncome} finalWealth={finalWealth} 
+                    currentSavings={currentSavings} lifetimeInvested={totalInvested10Y} 
+                    lifetimeIncome={lifetimeIncome} finalWealth={finalWealth10Y} 
                     targetYear="Evaluated" totalExpenses={totalMonthlyExpenses} 
                   />
                 </div>
@@ -357,7 +358,6 @@ const App: React.FC = () => {
                 <FireTracker currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
               </div>
 
-              {/* ---> UPDATE THIS LINE <--- */}
               <YearlyLedger ledgerData={ledgerData} inflationAdjusted={inflationAdjusted} />
 
               <StrategyEngine 
@@ -391,7 +391,7 @@ const App: React.FC = () => {
 
             <MilestoneBuckets 
               currentSavings={currentSavings} 
-              finalWealth={finalWealth} 
+              finalWealth={finalWealth10Y} 
               milestones={milestones} 
             />
           </div>
