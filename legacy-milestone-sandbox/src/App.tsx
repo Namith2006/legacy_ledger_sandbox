@@ -297,7 +297,7 @@ const App: React.FC = () => {
                 Sign Out
               </button>
             )}
-            <button onClick={downloadPDF} disabled={isExporting} className={`border border-[#2C3E50] text-[#E2E8F0] px-4 py-2 text-xs uppercase tracking-widest transition-colors flex items-center justify-center min-w-[140px] ${isExporting ? 'bg-[#2C3E50] opacity-70 cursor-wait' : 'hover:bg-[#2C3E50]'}`}>
+            <button onClick={downloadPDF} disabled={isExporting} className={`border border-[#2C3E50] text-[#E2E8F0] px-4 py-2 text-xs uppercase tracking-widest transition-colors flex items-center justify-center min-w-35 ${isExporting ? 'bg-[#2C3E50] opacity-70 cursor-wait' : 'hover:bg-[#2C3E50]'}`}>
               {isExporting ? 'Generating...' : 'Export PDF'}
             </button>
             <button onClick={syncToSupabase} disabled={isSyncing} className="bg-[#2C3E50] hover:bg-[#4A6572] text-[#E2E8F0] px-4 py-2 text-xs uppercase tracking-widest transition-colors flex items-center gap-2">
