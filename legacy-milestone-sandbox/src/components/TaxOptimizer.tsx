@@ -46,7 +46,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     freeCashFlow,
     totalAnnualInvested,
     annualExpenses,
-    potentialSavings80C, // <--- Added this back!
+    potentialSavings80C,
     activeTax,
     highestExpense,
     highestInvestment,
@@ -169,21 +169,35 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       // Wait for React to render the newly expanded Annexure
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      const dataUrl = await toPng(taxReportRef.current, { backgroundColor: '#0F1216', pixelRatio: 2 });
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const node = taxReportRef.current;
       
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      // 1. Force the capture dimensions to the full scrollable height of the node.
+      // This prevents the browser scroll position from cutting off the top.
+      const dataUrl = await toPng(node, { 
+        backgroundColor: '#0F1216', 
+        pixelRatio: 2,
+        width: node.scrollWidth,
+        height: node.scrollHeight
+      });
+      
+      const tempPdf = new jsPDF();
+      const imgProps = tempPdf.getImageProperties(dataUrl);
+      
+      // 2. Set the PDF page format dynamically to match the image exactly.
+      // This creates one continuous page, preventing the A4 cut-off at the bottom.
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [imgProps.width, imgProps.height]
+      });
+      
+      pdf.addImage(dataUrl, 'PNG', 0, 0, imgProps.width, imgProps.height);
       pdf.save(`Tax_Optimization_Report_${new Date().getFullYear()}.pdf`);
     } catch (error: any) {
       console.error("PDF Gen Failed:", error);
       alert(`Report Generation Failed: ${error.message}`);
     } finally { 
       setIsExporting(false); 
-      // Optionally hide the annexure again after export
-      // setShowAnnexure(false); 
     }
   };
 
