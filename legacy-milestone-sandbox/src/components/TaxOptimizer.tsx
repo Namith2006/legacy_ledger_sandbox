@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import type { CashFlowItem } from '../App';
 
 interface TaxOptimizerProps {
@@ -16,6 +18,11 @@ interface TaxSlab {
 }
 
 const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments, totalMonthlyExpenses = 0, expenses = [] }) => {
+  const taxReportRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
+  const [showAnnexure, setShowAnnexure] = useState(false);
+
   const { 
     annualIncome, 
     stdDedOld,
@@ -39,7 +46,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     freeCashFlow,
     totalAnnualInvested,
     annualExpenses,
-    potentialSavings80C,
+    potentialSavings80C, // <--- Added this back!
     activeTax,
     highestExpense,
     highestInvestment,
@@ -47,7 +54,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
   } = useMemo(() => {
     const grossIncome = monthlyIncome * 12;
     
-    // Split deductions based on regime rules for salaried individuals
     const stdDedOld = Math.min(grossIncome, 50000); 
     const stdDedNew = Math.min(grossIncome, 75000); 
     
@@ -94,17 +100,15 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     }
     const cessOld = taxOldBase * 0.04; 
 
-    // --- NEW REGIME MATH (UPDATED SLABS & REBATE) ---
+    // --- NEW REGIME MATH ---
     const taxableNew = Math.max(0, grossIncome - stdDedNew); 
     let taxNewBase = 0;
     let rebateNew = false;
     const slabsNewData: TaxSlab[] = [];
 
-    // New 87A Rebate threshold is ₹12L
     if (taxableNew <= 1200000) {
       rebateNew = taxableNew > 400000;
     } else {
-      // New 4-Lakh Brackets
       if (taxableNew > 2400000) { slabsNewData.push({ range: 'Above ₹24L', rate: '30%', taxableAmount: taxableNew - 2400000, tax: (taxableNew - 2400000) * 0.30 }); }
       if (taxableNew > 2000000) { slabsNewData.push({ range: '₹20L - ₹24L', rate: '25%', taxableAmount: Math.min(taxableNew, 2400000) - 2000000, tax: (Math.min(taxableNew, 2400000) - 2000000) * 0.25 }); }
       if (taxableNew > 1600000) { slabsNewData.push({ range: '₹16L - ₹20L', rate: '20%', taxableAmount: Math.min(taxableNew, 2000000) - 1600000, tax: (Math.min(taxableNew, 2000000) - 1600000) * 0.20 }); }
@@ -153,12 +157,40 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     };
   }, [monthlyIncome, investments, totalMonthlyExpenses, expenses]);
 
-  const [showDetails, setShowDetails] = useState(true); 
+  const downloadTaxReport = async () => {
+    if (!taxReportRef.current) return;
+    try {
+      setIsExporting(true);
+      
+      // Force UI to expand for the PDF capture
+      setShowDetails(true);
+      setShowAnnexure(true);
+      
+      // Wait for React to render the newly expanded Annexure
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      const dataUrl = await toPng(taxReportRef.current, { backgroundColor: '#0F1216', pixelRatio: 2 });
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Tax_Optimization_Report_${new Date().getFullYear()}.pdf`);
+    } catch (error: any) {
+      console.error("PDF Gen Failed:", error);
+      alert(`Report Generation Failed: ${error.message}`);
+    } finally { 
+      setIsExporting(false); 
+      // Optionally hide the annexure again after export
+      // setShowAnnexure(false); 
+    }
+  };
 
   if (annualIncome === 0) return null;
 
   return (
-    <div className="bg-[#0F1216] border border-[#2C3E50] p-6 mt-6">
+    <div ref={taxReportRef} className="bg-[#0F1216] border border-[#2C3E50] p-6 mt-6 relative">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4">
         <div>
           <h2 className="text-[#E2E8F0] text-lg font-semibold tracking-wide flex items-center gap-2">
@@ -174,13 +206,27 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
         </div>
       </div>
 
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-3 mb-4">
         <button 
           onClick={() => setShowDetails(!showDetails)}
           className="text-xs uppercase tracking-widest text-[#4A6572] hover:text-[#E2E8F0] flex items-center gap-1 transition-colors"
         >
           {showDetails ? 'Hide Calculation Breakdown' : 'Show Calculation Breakdown'}
           <span className="text-[10px]">{showDetails ? '▲' : '▼'}</span>
+        </button>
+        <button 
+          onClick={() => setShowAnnexure(!showAnnexure)}
+          className="text-xs uppercase tracking-widest text-[#4A6572] hover:text-[#E2E8F0] flex items-center gap-1 transition-colors"
+        >
+          {showAnnexure ? 'Hide Compliance Annexure' : 'Show Compliance Annexure'}
+          <span className="text-[10px]">{showAnnexure ? '▲' : '▼'}</span>
+        </button>
+        <button 
+          onClick={downloadTaxReport} 
+          disabled={isExporting} 
+          className={`border border-[#2C3E50] text-[#E2E8F0] px-3 py-1 text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2 ${isExporting ? 'bg-[#2C3E50] opacity-70 cursor-wait' : 'hover:bg-[#2C3E50]'}`}
+        >
+          <span>📄</span> {isExporting ? 'Generating...' : 'Download Tax Report'}
         </button>
       </div>
 
@@ -550,6 +596,88 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           Regardless of the regime chosen, if your Gross Annual Income exceeds the basic exemption limit (₹2.5L under the Old Regime, ₹3L under the New Regime), you must file your Income Tax Return (ITR) by July 31st each assessment year. Filing your ITR is a legal mandate that helps you claim TDS refunds, carry forward investment losses, and serves as an official income proof document for major financial milestones.
         </div>
       </div>
+
+      {/* --- FORMAL COMPLIANCE & AUDIT ANNEXURE (CA INTAKE FORM) --- */}
+      {showAnnexure && (
+        <div className="mt-8 pt-8 border-t-2 border-dashed border-[#2C3E50]">
+          <div className="text-center mb-8">
+            <h3 className="text-xl font-serif text-[#E2E8F0] uppercase tracking-widest mb-2">
+              Tax Computation & Compliance Annexure
+            </h3>
+            <p className="text-[#4A6572] text-xs uppercase tracking-widest">
+              Standardized Practitioner Intake Form | Financial Year: 2026-27 | Assessment Year: 2027-28
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs">
+            
+            {/* 1. ITR Info */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">1. Income Tax Return (ITR) Information</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Assessment Year:</span> <span>2027-28</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Previous Year:</span> <span>2026-27</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Method of Accounting:</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">ITR Form Targeted:</span> <span className="text-amber-500/50">[ITR-1 / ITR-2 / ITR-3]</span></div>
+              </div>
+            </div>
+
+            {/* 4. Tax Computation (Dynamically Populated) */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">4. Tax Computation & Adjustments</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Selected Tax Regime:</span> <span className="text-[#10b981] font-bold">{recommended}</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Gross Total Income:</span> <span>₹{annualIncome.toLocaleString('en-IN')}</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Chap VI-A (80C, 80D, etc.):</span> <span>{recommended === 'New Regime' ? 'Not Applicable' : `₹${deductions80C.toLocaleString('en-IN')}`}</span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Adjustments / Disallowances:</span> <span className="text-amber-500/50">[Review req.]</span></div>
+                <div className="flex justify-between font-bold pt-2 border-t border-[#2C3E50]/30"><span className="text-[#E2E8F0]">Net Taxable Income:</span> <span className="text-[#E2E8F0]">₹{(recommended === 'New Regime' ? taxableNew : taxableOld).toLocaleString('en-IN')}</span></div>
+              </div>
+            </div>
+
+            {/* 2. TDS/TCS */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">2. TDS / TCS Reconciliation</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Form 16 / 16A collected</div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Form 26AS / AIS reconciled</div>
+                <div className="flex justify-between pt-2"><span className="text-[#E2E8F0]">Defaults/Delays in TDS:</span> <span className="text-amber-500/50">[CA Review]</span></div>
+              </div>
+            </div>
+
+            {/* 3. Advance Tax */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">3. Advance & Self-Assessment Tax</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Advance Tax Paid (Q1-Q4):</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Self-Assessment Tax Paid:</span> <span className="border-b border-dashed border-[#4A6572] w-24"></span></div>
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Sec 234B/234C Interest:</span> <span className="text-amber-500/50">[Auto-calc at filing]</span></div>
+              </div>
+            </div>
+
+            {/* 5. GST */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">5. GST & Indirect Taxes</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">GST Registration Status:</span> <span className="text-amber-500/50">[Applicable?]</span></div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> GST Turnover reconciled with Books</div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Input Tax Credit (ITC) validated</div>
+              </div>
+            </div>
+
+            {/* 6. Return Filing & 7. Special Txns */}
+            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
+              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3">6. Compliance & 7. Special Txns</h4>
+              <div className="space-y-3 font-mono text-[#4A6572]">
+                <div className="flex justify-between"><span className="text-[#E2E8F0]">Target ITR Filing Date:</span> <span>July 31, 2027</span></div>
+                <div className="flex items-center gap-2 pt-2 border-t border-[#2C3E50]/30"><input type="checkbox" className="accent-[#2C3E50]" /> No cash txns above prescribed limits (Sec 269SS/T)</div>
+                <div className="flex items-center gap-2"><input type="checkbox" className="accent-[#2C3E50]" /> Related party txns (Transfer Pricing) documented</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
