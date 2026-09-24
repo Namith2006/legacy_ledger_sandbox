@@ -314,7 +314,7 @@ const App: React.FC = () => {
           {/* TIER 1: Core Dashboard Split */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Left Column: Inputs & Controls */}
+            {/* Left Column: Inputs & Controls & Tax Optimizer Sidebar */}
             <div className="lg:col-span-4 flex flex-col gap-8">
               <RankBadge 
                 currentSavings={currentSavings} 
@@ -333,6 +333,14 @@ const App: React.FC = () => {
                 marketReturns={marketReturns} setMarketReturns={setMarketReturns}
                 milestones={milestones} setMilestones={setMilestones}
                 inflationAdjusted={inflationAdjusted} setInflationAdjusted={setInflationAdjusted}
+              />
+
+              {/* MOVED TAX OPTIMIZER TO FILL THE LEFT GAP */}
+              <TaxOptimizer 
+                monthlyIncome={monthlyIncome} 
+                investments={investments} 
+                totalMonthlyExpenses={totalMonthlyExpenses} 
+                expenses={expenses} 
               />
             </div>
 
@@ -360,7 +368,7 @@ const App: React.FC = () => {
             </div>
           </div> 
           
-          {/* TIER 2: Full-Width Analytics & Execution (Moved out of the grid) */}
+          {/* TIER 2: Full-Width Analytics & Execution */}
           <div className="flex flex-col gap-8 mt-2">
             
             <YearlyLedger ledgerData={ledgerData} inflationAdjusted={inflationAdjusted} />
@@ -374,13 +382,6 @@ const App: React.FC = () => {
             />
 
             <PhysicalCapital expenses={expenses} />
-
-            <TaxOptimizer 
-              monthlyIncome={monthlyIncome} 
-              investments={investments} 
-              totalMonthlyExpenses={totalMonthlyExpenses} 
-              expenses={expenses} 
-            />
 
             <InvestmentAuditor 
               investments={investments} 
