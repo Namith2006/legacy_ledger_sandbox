@@ -336,7 +336,7 @@ const App: React.FC = () => {
               />
             </div>
 
-            {/* Right Column: Projections, Data, & Execution */}
+            {/* Right Column: Projections & Diagnostics */}
             <div className="lg:col-span-8 flex flex-col gap-8">
               <TrajectoryChart data={chartData} milestones={milestones} inflationAdjusted={inflationAdjusted} />
               
@@ -357,22 +357,24 @@ const App: React.FC = () => {
                 <EmergencyRunway currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
                 <FireTracker currentSavings={currentSavings} totalMonthlyExpenses={totalMonthlyExpenses} />
               </div>
-
-              <YearlyLedger ledgerData={ledgerData} inflationAdjusted={inflationAdjusted} />
-
-              <StrategyEngine 
-                currentSavings={currentSavings}
-                availableCash={availableCash}
-                targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
-                investments={investments}
-                setInvestments={setInvestments}
-              />
-              <PhysicalCapital expenses={expenses} />
             </div>
           </div> 
           
-          {/* TIER 3: Full-Width Analytics */}
+          {/* TIER 2: Full-Width Analytics & Execution (Moved out of the grid) */}
           <div className="flex flex-col gap-8 mt-2">
+            
+            <YearlyLedger ledgerData={ledgerData} inflationAdjusted={inflationAdjusted} />
+
+            <StrategyEngine 
+              currentSavings={currentSavings}
+              availableCash={availableCash}
+              targetGoal={milestones.length > 0 ? milestones[milestones.length - 1].target : 0}
+              investments={investments}
+              setInvestments={setInvestments}
+            />
+
+            <PhysicalCapital expenses={expenses} />
+
             <TaxOptimizer 
               monthlyIncome={monthlyIncome} 
               investments={investments} 
@@ -380,7 +382,6 @@ const App: React.FC = () => {
               expenses={expenses} 
             />
 
-            {/* AUDITOR ENHANCED WITH AVAILABLE CASH */}
             <InvestmentAuditor 
               investments={investments} 
               monthlyIncome={monthlyIncome} 
