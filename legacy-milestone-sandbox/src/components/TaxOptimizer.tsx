@@ -50,7 +50,9 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     activeTax,
     highestExpense,
     highestInvestment,
-    annualDeficit
+    annualDeficit,
+    chartPointsData,
+    whatIfIncomePlus10
   } = useMemo(() => {
     const grossIncome = monthlyIncome * 12;
     
@@ -69,22 +71,44 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
     const deductions80C = Math.min(total80CInvested, 150000);
 
-    // --- OLD REGIME MATH ---
-    const calculateOldTax = (deduction: number) => {
-      const taxable = Math.max(0, grossIncome - stdDedOld - deduction);
+    // --- REUSABLE TAX CALCULATORS FOR WHAT-IF & CHARTS ---
+    const calcOldTax = (gross: number, ded80C: number) => {
+      const taxable = Math.max(0, gross - Math.min(gross, 50000) - ded80C);
       if (taxable <= 500000) return 0;
-      let tax = 0;
-      if (taxable > 1000000) tax += (taxable - 1000000) * 0.30;
-      if (taxable > 500000) tax += (Math.min(taxable, 1000000) - 500000) * 0.20;
-      if (taxable > 250000) tax += (Math.min(taxable, 500000) - 250000) * 0.05;
-      return tax * 1.04;
+      let t = 0;
+      if (taxable > 1000000) t += (taxable - 1000000) * 0.30;
+      if (taxable > 500000) t += (Math.min(taxable, 1000000) - 500000) * 0.20;
+      if (taxable > 250000) t += (Math.min(taxable, 500000) - 250000) * 0.05;
+      return t * 1.04;
     };
 
-    const taxableOld = Math.max(0, grossIncome - stdDedOld - deductions80C);
-    const finalTaxOld = calculateOldTax(deductions80C);
-    const optimalOldTax = calculateOldTax(150000);
+    const calcNewTax = (gross: number) => {
+      const taxable = Math.max(0, gross - Math.min(gross, 75000));
+      if (taxable <= 1200000) return 0;
+      let t = 0;
+      if (taxable > 2400000) t += (taxable - 2400000) * 0.30;
+      if (taxable > 2000000) t += (Math.min(taxable, 2400000) - 2000000) * 0.25;
+      if (taxable > 1600000) t += (Math.min(taxable, 2000000) - 1600000) * 0.20;
+      if (taxable > 1200000) t += (Math.min(taxable, 1600000) - 1200000) * 0.15;
+      if (taxable > 800000) t += (Math.min(taxable, 1200000) - 800000) * 0.10;
+      if (taxable > 400000) t += (Math.min(taxable, 800000) - 400000) * 0.05;
+      return t * 1.04;
+    };
+
+    // --- CHART & WHAT-IF GENERATORS ---
+    const chartPointsData = [0.8, 0.9, 1.0, 1.1, 1.2].map(multiplier => {
+      const inc = Math.max(0, grossIncome * multiplier);
+      return { income: inc, oldTax: calcOldTax(inc, deductions80C), newTax: calcNewTax(inc) };
+    });
+
+    const incPlus10 = grossIncome * 1.1;
+    const whatIfIncomePlus10 = Math.min(calcOldTax(incPlus10, deductions80C), calcNewTax(incPlus10));
+    const optimalOldTax = calcOldTax(grossIncome, 150000);
+    const finalTaxOld = calcOldTax(grossIncome, deductions80C);
     const potentialSavings80C = Math.max(0, finalTaxOld - optimalOldTax);
 
+    // --- DETAILED BREAKDOWN MATH FOR UI CARDS ---
+    const taxableOld = Math.max(0, grossIncome - stdDedOld - deductions80C);
     let taxOldBase = 0;
     let rebateOld = false;
     const slabsOldData: TaxSlab[] = [];
@@ -100,7 +124,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     }
     const cessOld = taxOldBase * 0.04; 
 
-    // --- NEW REGIME MATH ---
     const taxableNew = Math.max(0, grossIncome - stdDedNew); 
     let taxNewBase = 0;
     let rebateNew = false;
@@ -153,42 +176,33 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       taxableOld, slabsOld: slabsOldData, taxOld: taxOldBase, cessOld, finalTaxOld, rebateOld,
       taxableNew, slabsNew: slabsNewData, taxNew: taxNewBase, cessNew, finalTaxNew, rebateNew,
       recommended, savings, effectiveTaxRate, freeCashFlow, totalAnnualInvested, annualExpenses, potentialSavings80C, activeTax,
-      highestExpense, highestInvestment, annualDeficit
+      highestExpense, highestInvestment, annualDeficit, chartPointsData, whatIfIncomePlus10
     };
   }, [monthlyIncome, investments, totalMonthlyExpenses, expenses]);
+
+  // SVG Chart Polyline Math
+  const maxChartTax = Math.max(...chartPointsData.map(p => Math.max(p.oldTax, p.newTax)), 1000);
+  const getOldY = (val: number) => 45 - (val / maxChartTax) * 40;
+  const getNewY = (val: number) => 45 - (val / maxChartTax) * 40;
+  
+  const oldPointsStr = chartPointsData.map((p, i) => `${(i / 4) * 100},${getOldY(p.oldTax)}`).join(' ');
+  const newPointsStr = chartPointsData.map((p, i) => `${(i / 4) * 100},${getNewY(p.newTax)}`).join(' ');
 
   const downloadTaxReport = async () => {
     if (!taxReportRef.current) return;
     try {
       setIsExporting(true);
-      
-      // Force UI to expand for the PDF capture
       setShowDetails(true);
       setShowAnnexure(true);
       
-      // Wait for React to render the newly expanded Annexure
       await new Promise(resolve => setTimeout(resolve, 800));
       
       const node = taxReportRef.current;
-      
-      // Force the capture dimensions to the full scrollable height of the node.
-      const dataUrl = await toPng(node, { 
-        backgroundColor: '#0F1216', 
-        pixelRatio: 2,
-        width: node.scrollWidth,
-        height: node.scrollHeight
-      });
-      
+      const dataUrl = await toPng(node, { backgroundColor: '#0F1216', pixelRatio: 2, width: node.scrollWidth, height: node.scrollHeight });
       const tempPdf = new jsPDF();
       const imgProps = tempPdf.getImageProperties(dataUrl);
       
-      // Set the PDF page format dynamically to match the image exactly.
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [imgProps.width, imgProps.height]
-      });
-      
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [imgProps.width, imgProps.height] });
       pdf.addImage(dataUrl, 'PNG', 0, 0, imgProps.width, imgProps.height);
       pdf.save(`Tax_Optimization_Report_${new Date().getFullYear()}.pdf`);
     } catch (error: any) {
@@ -201,7 +215,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
   if (annualIncome === 0) return null;
 
-  // Dynamic Ratio Calculations for Annexure
   const savingsRate = annualIncome > 0 ? ((totalAnnualInvested + freeCashFlow) / annualIncome) * 100 : 0;
   const expenseRatio = annualIncome > 0 ? (annualExpenses / annualIncome) * 100 : 0;
 
@@ -484,6 +497,61 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
             <span className="text-[#4A6572] font-bold">₹0 Difference</span>
           </div>
         )}
+
+        {/* --- NEW: TAX VS INCOME CHART & WHAT-IF SCENARIOS --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Tax vs Income Line Chart */}
+          <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden flex flex-col">
+            <div className="bg-[#15803d] text-white text-center py-2 text-xs font-bold uppercase tracking-widest">
+              Tax vs Income Chart
+            </div>
+            <div className="p-4 flex-1 flex items-center justify-center relative min-h-[120px]">
+              <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible">
+                {/* Y-Axis & X-Axis */}
+                <line x1="0" y1="0" x2="0" y2="50" stroke="#4A6572" strokeWidth="1" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="#4A6572" strokeWidth="1" />
+                
+                {/* Data Lines */}
+                <polyline points={oldPointsStr} fill="none" stroke="#ef4444" strokeWidth="1.5" />
+                <polyline points={newPointsStr} fill="none" stroke="#3b82f6" strokeWidth="1.5" />
+                
+                {/* Data Points (Old Regime) */}
+                {chartPointsData.map((p, i) => (
+                  <circle key={`old-${i}`} cx={(i / 4) * 100} cy={getOldY(p.oldTax)} r="2" fill="#ef4444" />
+                ))}
+                {/* Data Points (New Regime) */}
+                {chartPointsData.map((p, i) => (
+                  <circle key={`new-${i}`} cx={(i / 4) * 100} cy={getNewY(p.newTax)} r="2" fill="#3b82f6" />
+                ))}
+              </svg>
+              
+              {/* Legend */}
+              <div className="absolute top-2 left-4 text-[9px] font-mono flex flex-col gap-1">
+                <span className="text-[#3b82f6] flex items-center gap-1"><div className="w-2 h-0.5 bg-[#3b82f6]"></div> New Regime</span>
+                <span className="text-[#ef4444] flex items-center gap-1"><div className="w-2 h-0.5 bg-[#ef4444]"></div> Old Regime</span>
+              </div>
+            </div>
+          </div>
+
+          {/* What-If Calculator */}
+          <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden flex flex-col">
+            <div className="bg-[#0f766e] text-white text-center py-2 text-xs font-bold uppercase tracking-widest">
+              What-If Calculator
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-center gap-4 text-[#E2E8F0] text-sm">
+              <div className="flex items-center gap-2 border-b border-[#2C3E50]/50 pb-3">
+                <span className="text-[#4A6572] text-[10px]">▷</span>
+                <span className="font-mono">Income +10% = Tax: <span className="font-bold text-amber-500">₹{Math.round(whatIfIncomePlus10).toLocaleString('en-IN')}</span></span>
+              </div>
+              <div className="flex items-center gap-2 border-b border-[#2C3E50]/50 pb-3">
+                <span className="text-[#4A6572] text-[10px]">▷</span>
+                <span className="font-mono">80C Fully Utilized: Tax Savings: <span className="font-bold text-[#10b981]">₹{Math.round(potentialSavings80C).toLocaleString('en-IN')}</span></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
 
         <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden">
           <div className="p-4 border-b border-[#2C3E50] bg-[#0F1216]">
