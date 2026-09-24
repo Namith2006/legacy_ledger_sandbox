@@ -21,7 +21,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
   const taxReportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [showDetails, setShowDetails] = useState(true);
-  const [showAnnexure, setShowAnnexure] = useState(false);
 
   const { 
     annualIncome, 
@@ -193,7 +192,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     try {
       setIsExporting(true);
       setShowDetails(true);
-      setShowAnnexure(true);
       
       await new Promise(resolve => setTimeout(resolve, 800));
       
@@ -214,9 +212,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
   };
 
   if (annualIncome === 0) return null;
-
-  const savingsRate = annualIncome > 0 ? ((totalAnnualInvested + freeCashFlow) / annualIncome) * 100 : 0;
-  const expenseRatio = annualIncome > 0 ? (annualExpenses / annualIncome) * 100 : 0;
 
   return (
     <div ref={taxReportRef} className="bg-[#0F1216] border border-[#2C3E50] p-6 mt-6 relative">
@@ -242,13 +237,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
         >
           {showDetails ? 'Hide Calculation Breakdown' : 'Show Calculation Breakdown'}
           <span className="text-[10px]">{showDetails ? '▲' : '▼'}</span>
-        </button>
-        <button 
-          onClick={() => setShowAnnexure(!showAnnexure)}
-          className="text-xs uppercase tracking-widest text-[#4A6572] hover:text-[#E2E8F0] flex items-center gap-1 transition-colors"
-        >
-          {showAnnexure ? 'Hide Compliance Annexure' : 'Show Compliance Annexure'}
-          <span className="text-[10px]">{showAnnexure ? '▲' : '▼'}</span>
         </button>
         <button 
           onClick={downloadTaxReport} 
@@ -498,7 +486,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           </div>
         )}
 
-        {/* --- NEW: TAX VS INCOME CHART & WHAT-IF SCENARIOS --- */}
+        {/* --- TAX VS INCOME CHART & WHAT-IF SCENARIOS --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
           {/* Tax vs Income Line Chart */}
@@ -680,117 +668,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           Regardless of the regime chosen, if your Gross Annual Income exceeds the basic exemption limit (₹2.5L under the Old Regime, ₹3L under the New Regime), you must file your Income Tax Return (ITR) by July 31st each assessment year. Filing your ITR is a legal mandate that helps you claim TDS refunds, carry forward investment losses, and serves as an official income proof document for major financial milestones.
         </div>
       </div>
-
-      {/* --- FORMAL COMPLIANCE & AUDIT ANNEXURE (CA INTAKE FORM) --- */}
-      {showAnnexure && (
-        <div className="mt-8 pt-8 border-t-2 border-dashed border-[#2C3E50]">
-          <div className="text-center mb-8">
-            <h3 className="text-xl font-serif text-[#E2E8F0] uppercase tracking-widest mb-2">
-              Tax Computation & Compliance Annexure
-            </h3>
-            <p className="text-[#4A6572] text-xs uppercase tracking-widest">
-              Standardized Practitioner Intake Form | Financial Year: 2026-27 | Assessment Year: 2027-28
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs">
-            
-            {/* 1. Tax & Return Details */}
-            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3 flex items-center gap-2">
-                <span>📑</span> Tax & Return Details
-              </h4>
-              <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Target ITR Form:</span> <span className="text-[#10b981]">ITR-1 / ITR-2 / ITR-3</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Filing Deadline:</span> <span>31 July 2027</span></div>
-                
-                <div className="pt-2 border-t border-[#2C3E50]/30">
-                  <span className="text-[#E2E8F0] block mb-1">Estimated Advance Tax Targets:</span>
-                  <div className="pl-4 space-y-1 text-[11px]">
-                    <div className="flex justify-between"><span>15 June (15%):</span> <span>₹{Math.round(activeTax * 0.15).toLocaleString('en-IN')}</span></div>
-                    <div className="flex justify-between"><span>15 Sept (45%):</span> <span>₹{Math.round(activeTax * 0.45).toLocaleString('en-IN')}</span></div>
-                    <div className="flex justify-between"><span>15 Dec (75%):</span> <span>₹{Math.round(activeTax * 0.75).toLocaleString('en-IN')}</span></div>
-                    <div className="flex justify-between"><span>15 Mar (100%):</span> <span className="text-amber-500">₹{Math.round(activeTax).toLocaleString('en-IN')}</span></div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between pt-2 border-t border-[#2C3E50]/30"><span className="text-[#E2E8F0]">Self-Assessment Tax:</span> <span className="text-amber-500/50">[Pending Final Eval]</span></div>
-                
-                <div className="pt-2 border-t border-[#2C3E50]/30">
-                  <span className="text-[#E2E8F0] block mb-1">TDS / TCS Compliance:</span>
-                  <div className="pl-4 space-y-1 text-[11px]">
-                    <div className="flex justify-between"><span>Total Deducted:</span> <span className="text-amber-500/50">[Reconcile 26AS]</span></div>
-                    <div className="flex justify-between"><span>Certificates (16/16A):</span> <span className="text-amber-500/50">[Review Req.]</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Computation of Income */}
-            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3 flex items-center gap-2">
-                <span>🧮</span> Computation of Income
-              </h4>
-              <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Gross Income:</span> <span>₹{annualIncome.toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Standard Deduction:</span> <span className="text-blue-400">- ₹{(recommended === 'New Regime' ? stdDedNew : stdDedOld).toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Chapter VI-A (80C etc.):</span> <span className="text-blue-400">- ₹{(recommended === 'New Regime' ? 0 : deductions80C).toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between font-bold pt-2 border-t border-[#2C3E50]/30"><span className="text-[#E2E8F0]">Net Taxable Income:</span> <span className="text-[#E2E8F0]">₹{(recommended === 'New Regime' ? taxableNew : taxableOld).toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between"><span className="text-[#E2E8F0]">Disallowances (Sec 43B, 40A):</span> <span className="text-amber-500/50">[N/A for Salaried]</span></div>
-                <div className="flex justify-between pt-2 border-t border-[#2C3E50]/30"><span className="text-[#E2E8F0]">Final Tax Liability:</span> <span className="text-[#8B3A3A] font-bold">₹{Math.round(activeTax).toLocaleString('en-IN')}</span></div>
-              </div>
-            </div>
-
-            {/* 3. Special & Indirect Tax Reporting */}
-            <div className="bg-[#181C28] border border-[#2C3E50] p-5">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3 flex items-center gap-2">
-                <span>⚠️</span> Special Reporting & GST
-              </h4>
-              <div className="space-y-4 font-mono text-[#4A6572]">
-                <div>
-                  <span className="text-[#E2E8F0] block">GST Compliance:</span>
-                  <span className="text-[11px] block mt-1">[Applicable for Business/Freelance only]</span>
-                </div>
-                <div className="pt-2 border-t border-[#2C3E50]/30">
-                  <span className="text-[#E2E8F0] block">Cash Transactions {'>'} ₹20,000:</span>
-                  <span className="text-[11px] block mt-1">[Pending Review]</span>
-                </div>
-                <div className="pt-2 border-t border-[#2C3E50]/30">
-                  <span className="text-[#E2E8F0] block">Loans / Advances:</span>
-                  <span className="text-[11px] block mt-1">[Pending Review]</span>
-                </div>
-                <div className="pt-2 border-t border-[#2C3E50]/30">
-                  <span className="text-[#E2E8F0] block">Related Party Transactions:</span>
-                  <span className="text-[11px] block mt-1">[Pending Review]</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Ratios & Analysis */}
-            <div className="bg-[#181C28] border border-[#2C3E50] p-5 h-fit">
-              <h4 className="text-[#E2E8F0] font-bold uppercase tracking-widest border-b border-[#2C3E50] pb-2 mb-3 flex items-center gap-2">
-                <span>📊</span> Personal Ratios & Analysis
-              </h4>
-              <div className="space-y-3 font-mono text-[#4A6572]">
-                <div className="flex justify-between items-center p-2 bg-[#0F1216] border border-[#2C3E50]/50 rounded">
-                  <span className="text-[#E2E8F0]">Savings & Invest Rate:</span> 
-                  <span className="text-[#10b981] font-bold text-sm">{savingsRate.toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-[#0F1216] border border-[#2C3E50]/50 rounded">
-                  <span className="text-[#E2E8F0]">Effective Tax Rate:</span> 
-                  <span className="text-[#8B3A3A] font-bold text-sm">{effectiveTaxRate.toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-[#0F1216] border border-[#2C3E50]/50 rounded">
-                  <span className="text-[#E2E8F0]">Personal Expense Ratio:</span> 
-                  <span className="text-amber-500 font-bold text-sm">{expenseRatio.toFixed(1)}%</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
