@@ -21,6 +21,11 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
   const taxReportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [showDetails, setShowDetails] = useState(true);
+  
+  // --- NEW INTERACTIVE STATE ---
+  const [incomeBoost, setIncomeBoost] = useState<number>(0);
+  const [custom80C, setCustom80C] = useState<string>('');
+  const [hoveredNode, setHoveredNode] = useState<number | null>(null);
 
   const { 
     annualIncome, 
@@ -29,29 +34,26 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
     deductions80C, 
     taxableOld,
     slabsOld,
-    taxOld,
     cessOld,
     finalTaxOld, 
-    rebateOld,
     taxableNew,
     slabsNew,
-    taxNew,
     cessNew,
     finalTaxNew, 
-    rebateNew,
     recommended, 
     savings,
     effectiveTaxRate,
     freeCashFlow,
     totalAnnualInvested,
     annualExpenses,
-    potentialSavings80C,
     activeTax,
     highestExpense,
     highestInvestment,
     annualDeficit,
     chartPointsData,
-    whatIfIncomePlus10
+    calcOldTax,
+    calcNewTax,
+    potentialSavings80C
   } = useMemo(() => {
     const grossIncome = monthlyIncome * 12;
     
@@ -70,7 +72,7 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
     const deductions80C = Math.min(total80CInvested, 150000);
 
-    // --- REUSABLE TAX CALCULATORS FOR WHAT-IF & CHARTS ---
+    // --- REUSABLE TAX CALCULATORS ---
     const calcOldTax = (gross: number, ded80C: number) => {
       const taxable = Math.max(0, gross - Math.min(gross, 50000) - ded80C);
       if (taxable <= 500000) return 0;
@@ -94,27 +96,22 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
       return t * 1.04;
     };
 
-    // --- CHART & WHAT-IF GENERATORS ---
+    // --- CHART GENERATOR ---
     const chartPointsData = [0.8, 0.9, 1.0, 1.1, 1.2].map(multiplier => {
       const inc = Math.max(0, grossIncome * multiplier);
       return { income: inc, oldTax: calcOldTax(inc, deductions80C), newTax: calcNewTax(inc) };
     });
 
-    const incPlus10 = grossIncome * 1.1;
-    const whatIfIncomePlus10 = Math.min(calcOldTax(incPlus10, deductions80C), calcNewTax(incPlus10));
-    const optimalOldTax = calcOldTax(grossIncome, 150000);
     const finalTaxOld = calcOldTax(grossIncome, deductions80C);
+    const optimalOldTax = calcOldTax(grossIncome, 150000);
     const potentialSavings80C = Math.max(0, finalTaxOld - optimalOldTax);
-
-    // --- DETAILED BREAKDOWN MATH FOR UI CARDS ---
+    
+    // --- UI BREAKDOWN CARDS ---
     const taxableOld = Math.max(0, grossIncome - stdDedOld - deductions80C);
     let taxOldBase = 0;
-    let rebateOld = false;
     const slabsOldData: TaxSlab[] = [];
 
-    if (taxableOld <= 500000) {
-      rebateOld = taxableOld > 250000;
-    } else {
+    if (taxableOld > 500000) {
       if (taxableOld > 1000000) { slabsOldData.push({ range: 'Above ₹10L', rate: '30%', taxableAmount: taxableOld - 1000000, tax: (taxableOld - 1000000) * 0.30 }); }
       if (taxableOld > 500000) { slabsOldData.push({ range: '₹5L - ₹10L', rate: '20%', taxableAmount: Math.min(taxableOld, 1000000) - 500000, tax: (Math.min(taxableOld, 1000000) - 500000) * 0.20 }); }
       if (taxableOld > 250000) { slabsOldData.push({ range: '₹2.5L - ₹5L', rate: '5%', taxableAmount: Math.min(taxableOld, 500000) - 250000, tax: (Math.min(taxableOld, 500000) - 250000) * 0.05 }); }
@@ -125,12 +122,9 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
     const taxableNew = Math.max(0, grossIncome - stdDedNew); 
     let taxNewBase = 0;
-    let rebateNew = false;
     const slabsNewData: TaxSlab[] = [];
 
-    if (taxableNew <= 1200000) {
-      rebateNew = taxableNew > 400000;
-    } else {
+    if (taxableNew > 1200000) {
       if (taxableNew > 2400000) { slabsNewData.push({ range: 'Above ₹24L', rate: '30%', taxableAmount: taxableNew - 2400000, tax: (taxableNew - 2400000) * 0.30 }); }
       if (taxableNew > 2000000) { slabsNewData.push({ range: '₹20L - ₹24L', rate: '25%', taxableAmount: Math.min(taxableNew, 2400000) - 2000000, tax: (Math.min(taxableNew, 2400000) - 2000000) * 0.25 }); }
       if (taxableNew > 1600000) { slabsNewData.push({ range: '₹16L - ₹20L', rate: '20%', taxableAmount: Math.min(taxableNew, 2000000) - 1600000, tax: (Math.min(taxableNew, 2000000) - 1600000) * 0.20 }); }
@@ -172,12 +166,21 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
     return { 
       annualIncome: grossIncome, stdDedOld, stdDedNew, deductions80C, 
-      taxableOld, slabsOld: slabsOldData, taxOld: taxOldBase, cessOld, finalTaxOld, rebateOld,
-      taxableNew, slabsNew: slabsNewData, taxNew: taxNewBase, cessNew, finalTaxNew, rebateNew,
-      recommended, savings, effectiveTaxRate, freeCashFlow, totalAnnualInvested, annualExpenses, potentialSavings80C, activeTax,
-      highestExpense, highestInvestment, annualDeficit, chartPointsData, whatIfIncomePlus10
+      taxableOld, slabsOld: slabsOldData, cessOld, finalTaxOld, 
+      taxableNew, slabsNew: slabsNewData, cessNew, finalTaxNew, 
+      recommended, savings, effectiveTaxRate, freeCashFlow, totalAnnualInvested, annualExpenses, activeTax,
+      highestExpense, highestInvestment, annualDeficit, chartPointsData, calcOldTax, calcNewTax, potentialSavings80C
     };
   }, [monthlyIncome, investments, totalMonthlyExpenses, expenses]);
+
+  // --- INTERACTIVE CALCULATIONS ---
+  const active80C = custom80C !== '' ? Math.min(Number(custom80C), 150000) : deductions80C;
+  const simulatedIncome = annualIncome * (1 + (incomeBoost / 100));
+  const simOldTax = calcOldTax(simulatedIncome, active80C);
+  const simNewTax = calcNewTax(simulatedIncome);
+  const optimalRegime = simNewTax < simOldTax ? 'New Regime' : 'Old Regime';
+  const bestSimTax = Math.min(simOldTax, simNewTax);
+  const taxIncrease = bestSimTax - activeTax;
 
   // SVG Chart Polyline Math
   const maxChartTax = Math.max(...chartPointsData.map(p => Math.max(p.oldTax, p.newTax)), 1000);
@@ -274,7 +277,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 <div className="flex justify-between text-[#E2E8F0] items-center">
                   <span className="flex flex-col">
                     <span>Gross Annual Income</span>
-                    <span className="text-[9px] text-[#4A6572]">Your total yearly earnings</span>
                   </span>
                   <span className="font-mono">₹{annualIncome.toLocaleString('en-IN')}</span>
                 </div>
@@ -282,7 +284,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 <div className="flex justify-between text-[#10b981] items-center">
                   <span className="flex flex-col">
                     <span>Standard Deduction</span>
-                    <span className="text-[9px] text-[#10b981]/70">Flat exemption for salaried individuals</span>
                   </span>
                   <span className="font-mono">-₹{stdDedOld.toLocaleString('en-IN')}</span>
                 </div>
@@ -290,7 +291,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 <div className="flex justify-between text-[#10b981] items-center">
                   <span className="flex flex-col">
                     <span>Sec 80C Investments</span>
-                    <span className="text-[9px] text-[#10b981]/70">Eligible savings (Max allowed: ₹1.5L)</span>
                   </span>
                   <span className="font-mono">-₹{deductions80C.toLocaleString('en-IN')}</span>
                 </div>
@@ -316,34 +316,16 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                       </div>
                     ))}
                   </div>
-
-                  <div className="flex justify-between text-[#E2E8F0] pt-1 items-center font-semibold">
-                    <span>Base Tax Computed</span>
-                    <span className="font-mono">₹{Math.round(taxOld).toLocaleString('en-IN')}</span>
-                  </div>
                 </div>
               )}
 
               <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
-                <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>3️⃣</span> Final Adjustments</div>
-                
                 <div className="flex justify-between text-[#E2E8F0] items-center">
                   <span className="flex flex-col">
                     <span>Health & Education Cess</span>
-                    <span className="text-[9px] text-[#4A6572]">Mandatory 4% government surcharge on Base Tax</span>
                   </span>
                   <span className="text-amber-500 font-mono">+₹{Math.round(cessOld).toLocaleString('en-IN')}</span>
                 </div>
-                
-                {rebateOld && (
-                  <div className="flex justify-between text-[#10b981] items-center pt-2 bg-[#10b981]/10 p-2 rounded mt-2 border border-[#10b981]/20">
-                    <span className="flex flex-col">
-                      <span className="font-semibold">Sec 87A Relief Rebate</span>
-                      <span className="text-[9px] text-[#10b981]/70">100% tax waived since Income is ≤ ₹5L</span>
-                    </span>
-                    <span className="font-mono">-₹{Math.round(finalTaxOld).toLocaleString('en-IN')}</span>
-                  </div>
-                )}
               </div>
 
             </div>
@@ -386,7 +368,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 <div className="flex justify-between text-[#E2E8F0] items-center">
                   <span className="flex flex-col">
                     <span>Gross Annual Income</span>
-                    <span className="text-[9px] text-[#4A6572]">Your total yearly earnings</span>
                   </span>
                   <span className="font-mono">₹{annualIncome.toLocaleString('en-IN')}</span>
                 </div>
@@ -394,7 +375,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 <div className="flex justify-between text-[#10b981] items-center">
                   <span className="flex flex-col">
                     <span>Standard Deduction</span>
-                    <span className="text-[9px] text-[#10b981]/70">Flat ₹75k exemption for salaried individuals</span>
                   </span>
                   <span className="font-mono">-₹{stdDedNew.toLocaleString('en-IN')}</span>
                 </div>
@@ -402,7 +382,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                 <div className="flex justify-between text-[#4A6572] items-center opacity-60">
                   <span className="flex flex-col">
                     <span className="line-through">Sec 80C Investments</span>
-                    <span className="text-[9px]">Not permitted under the New Regime</span>
                   </span>
                   <span className="font-mono">₹0</span>
                 </div>
@@ -428,34 +407,16 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
                       </div>
                     ))}
                   </div>
-
-                  <div className="flex justify-between text-[#E2E8F0] pt-1 items-center font-semibold">
-                    <span>Base Tax Computed</span>
-                    <span className="font-mono">₹{Math.round(taxNew).toLocaleString('en-IN')}</span>
-                  </div>
                 </div>
               )}
 
               <div className="space-y-2 pt-2 border-t border-[#2C3E50]/30">
-                <div className="text-[10px] text-[#4A6572] uppercase tracking-widest font-semibold mb-2 flex items-center gap-1"><span>3️⃣</span> Final Adjustments</div>
-                
                 <div className="flex justify-between text-[#E2E8F0] items-center">
                   <span className="flex flex-col">
                     <span>Health & Education Cess</span>
-                    <span className="text-[9px] text-[#4A6572]">Mandatory 4% government surcharge on Base Tax</span>
                   </span>
                   <span className="text-amber-500 font-mono">+₹{Math.round(cessNew).toLocaleString('en-IN')}</span>
                 </div>
-                
-                {rebateNew && (
-                  <div className="flex justify-between text-[#10b981] items-center pt-2 bg-[#10b981]/10 p-2 rounded mt-2 border border-[#10b981]/20">
-                    <span className="flex flex-col">
-                      <span className="font-semibold">Sec 87A Relief Rebate</span>
-                      <span className="text-[9px] text-[#10b981]/70">100% tax waived since Income is ≤ ₹12L</span>
-                    </span>
-                    <span className="font-mono">-₹{Math.round(finalTaxNew).toLocaleString('en-IN')}</span>
-                  </div>
-                )}
               </div>
 
             </div>
@@ -475,73 +436,155 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
 
       <div className="flex flex-col gap-6 mt-2">
         {savings > 0 ? (
-          <div className="bg-[#10b981]/10 border border-[#10b981]/30 p-3 flex justify-between items-center text-sm">
+          <div className="bg-[#10b981]/10 border border-[#10b981]/30 p-3 flex justify-between items-center text-sm transition-all">
             <span className="text-[#E2E8F0]">By choosing the <strong className="text-[#10b981]">{recommended}</strong>, you save:</span>
             <span className="text-[#10b981] font-bold">₹{Math.round(savings).toLocaleString('en-IN')} / year</span>
           </div>
         ) : (
-          <div className="bg-[#2C3E50]/20 border border-[#2C3E50]/50 p-3 flex justify-between items-center text-sm">
+          <div className="bg-[#2C3E50]/20 border border-[#2C3E50]/50 p-3 flex justify-between items-center text-sm transition-all">
             <span className="text-[#E2E8F0]">Both regimes result in the same tax liability.</span>
             <span className="text-[#4A6572] font-bold">₹0 Difference</span>
           </div>
         )}
 
-        {/* --- TAX VS INCOME CHART & WHAT-IF SCENARIOS --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* --- INTERACTIVE TAX VS INCOME CHART & WHAT-IF SCENARIOS --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           
-          {/* Tax vs Income Line Chart */}
+          {/* Interactive Line Chart */}
           <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden flex flex-col">
-            <div className="bg-[#15803d] text-white text-center py-2 text-xs font-bold uppercase tracking-widest">
-              Tax vs Income Chart
+            <div className="bg-[#15803d] text-white py-3 px-4 text-xs font-bold uppercase tracking-widest flex justify-between items-center">
+              <span>Tax vs Income Chart</span>
+              <span className="text-[10px] text-[#10b981] bg-[#0F1216]/50 px-2 py-1 rounded">Interactive Hover</span>
             </div>
-            <div className="p-4 flex-1 flex items-center justify-center relative min-h-[120px]">
-              <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible">
-                {/* Y-Axis & X-Axis */}
-                <line x1="0" y1="0" x2="0" y2="50" stroke="#4A6572" strokeWidth="1" />
-                <line x1="0" y1="50" x2="100" y2="50" stroke="#4A6572" strokeWidth="1" />
+            <div className="p-4 flex-1 flex flex-col justify-center relative min-h-55">
+              <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible group">
+                {/* Axes */}
+                <line x1="0" y1="0" x2="0" y2="50" stroke="#4A6572" strokeWidth="0.5" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="#4A6572" strokeWidth="0.5" />
                 
-                {/* Data Lines */}
-                <polyline points={oldPointsStr} fill="none" stroke="#ef4444" strokeWidth="1.5" />
-                <polyline points={newPointsStr} fill="none" stroke="#3b82f6" strokeWidth="1.5" />
+                {/* Lines */}
+                <polyline points={oldPointsStr} fill="none" stroke="#ef4444" strokeWidth="1" className="transition-all duration-300" />
+                <polyline points={newPointsStr} fill="none" stroke="#3b82f6" strokeWidth="1" className="transition-all duration-300" />
                 
-                {/* Data Points (Old Regime) */}
-                {chartPointsData.map((p, i) => (
-                  <circle key={`old-${i}`} cx={(i / 4) * 100} cy={getOldY(p.oldTax)} r="2" fill="#ef4444" />
-                ))}
-                {/* Data Points (New Regime) */}
-                {chartPointsData.map((p, i) => (
-                  <circle key={`new-${i}`} cx={(i / 4) * 100} cy={getNewY(p.newTax)} r="2" fill="#3b82f6" />
-                ))}
+                {/* Data Points with Hover Detection */}
+                {chartPointsData.map((p, i) => {
+                  const cx = (i / 4) * 100;
+                  const cyOld = getOldY(p.oldTax);
+                  const cyNew = getNewY(p.newTax);
+                  const isHovered = hoveredNode === i;
+
+                  return (
+                    <g key={`node-${i}`} onMouseEnter={() => setHoveredNode(i)} onMouseLeave={() => setHoveredNode(null)}>
+                      {/* Invisible larger hit area for easier hovering */}
+                      <rect x={cx - 10} y="0" width="20" height="50" fill="transparent" className="cursor-crosshair" />
+                      
+                      {/* Vertical Guideline on Hover */}
+                      {isHovered && <line x1={cx} y1="0" x2={cx} y2="50" stroke="#4A6572" strokeWidth="0.5" strokeDasharray="2" />}
+                      
+                      <circle cx={cx} cy={cyOld} r={isHovered ? "3" : "1.5"} fill="#ef4444" className="transition-all duration-200" />
+                      <circle cx={cx} cy={cyNew} r={isHovered ? "3" : "1.5"} fill="#3b82f6" className="transition-all duration-200" />
+                    </g>
+                  );
+                })}
               </svg>
               
+              {/* Dynamic Tooltip */}
+              {hoveredNode !== null && (
+                <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-[#0F1216] border border-[#2C3E50] p-3 rounded shadow-xl pointer-events-none z-10 w-48 transition-opacity">
+                  <div className="text-[10px] text-[#4A6572] uppercase tracking-widest border-b border-[#2C3E50]/50 pb-1 mb-2">
+                    Income: <span className="text-[#E2E8F0] font-bold">₹{Math.round(chartPointsData[hoveredNode].income).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-mono mb-1">
+                    <span className="text-[#ef4444] flex items-center gap-1"><div className="w-1.5 h-1.5 bg-[#ef4444] rounded-full"></div> Old</span>
+                    <span>₹{Math.round(chartPointsData[hoveredNode].oldTax).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-[#3b82f6] flex items-center gap-1"><div className="w-1.5 h-1.5 bg-[#3b82f6] rounded-full"></div> New</span>
+                    <span>₹{Math.round(chartPointsData[hoveredNode].newTax).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Legend */}
-              <div className="absolute top-2 left-4 text-[9px] font-mono flex flex-col gap-1">
-                <span className="text-[#3b82f6] flex items-center gap-1"><div className="w-2 h-0.5 bg-[#3b82f6]"></div> New Regime</span>
-                <span className="text-[#ef4444] flex items-center gap-1"><div className="w-2 h-0.5 bg-[#ef4444]"></div> Old Regime</span>
+              <div className="absolute bottom-6 left-6 text-[10px] font-mono flex gap-4">
+                <span className="text-[#ef4444] flex items-center gap-1"><div className="w-3 h-0.5 bg-[#ef4444]"></div> Old Regime</span>
+                <span className="text-[#3b82f6] flex items-center gap-1"><div className="w-3 h-0.5 bg-[#3b82f6]"></div> New Regime</span>
               </div>
             </div>
           </div>
 
-          {/* What-If Calculator */}
+          {/* Interactive What-If Calculator */}
           <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden flex flex-col">
-            <div className="bg-[#0f766e] text-white text-center py-2 text-xs font-bold uppercase tracking-widest">
-              What-If Calculator
+            <div className="bg-[#0f766e] text-white py-3 px-4 text-xs font-bold uppercase tracking-widest flex justify-between items-center">
+              <span>What-If Calculator</span>
+              <span className="text-[10px] text-teal-300 bg-[#0F1216]/50 px-2 py-1 rounded">Live Model</span>
             </div>
-            <div className="p-5 flex-1 flex flex-col justify-center gap-4 text-[#E2E8F0] text-sm">
-              <div className="flex items-center gap-2 border-b border-[#2C3E50]/50 pb-3">
-                <span className="text-[#4A6572] text-[10px]">▷</span>
-                <span className="font-mono">Income +10% = Tax: <span className="font-bold text-amber-500">₹{Math.round(whatIfIncomePlus10).toLocaleString('en-IN')}</span></span>
+            
+            <div className="p-5 flex-1 flex flex-col justify-center gap-6">
+              
+              {/* Slider Input */}
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-semibold text-[#E2E8F0] flex justify-between uppercase tracking-widest">
+                  <span>Simulate Salary Increase</span>
+                  <span className="text-[#10b981]">+{incomeBoost}%</span>
+                </label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="50" 
+                  value={incomeBoost} 
+                  onChange={(e) => setIncomeBoost(Number(e.target.value))}
+                  className="w-full h-1 bg-[#0F1216] rounded-lg appearance-none cursor-pointer accent-[#10b981]"
+                />
+                <div className="flex justify-between items-end p-3 bg-[#0F1216] border border-[#2C3E50]/50 rounded">
+                  <div className="text-[10px] text-[#4A6572] uppercase tracking-widest">
+                    Projected Gross: <br/>
+                    <span className="text-[#E2E8F0] text-sm">₹{Math.round(simulatedIncome).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] text-[#4A6572] uppercase tracking-widest block mb-1">New {optimalRegime} Tax</span>
+                    <span className={`font-mono font-bold ${taxIncrease > 0 ? 'text-amber-500' : 'text-[#10b981]'}`}>
+                      ₹{Math.round(bestSimTax).toLocaleString('en-IN')} 
+                      <span className="text-[10px] ml-1 opacity-70">({taxIncrease > 0 ? '+' : ''}₹{Math.round(taxIncrease).toLocaleString('en-IN')})</span>
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 border-b border-[#2C3E50]/50 pb-3">
-                <span className="text-[#4A6572] text-[10px]">▷</span>
-                <span className="font-mono">80C Fully Utilized: Tax Savings: <span className="font-bold text-[#10b981]">₹{Math.round(potentialSavings80C).toLocaleString('en-IN')}</span></span>
+
+              {/* Deduction Input */}
+              <div className="flex flex-col gap-3 pt-2 border-t border-[#2C3E50]/50">
+                <label className="text-xs font-semibold text-[#E2E8F0] flex justify-between uppercase tracking-widest items-center">
+                  <span>Simulate 80C Investment</span>
+                  <div className="group relative">
+                    <span className="text-[10px] text-[#4A6572] bg-[#0F1216] border border-[#2C3E50] px-2 py-0.5 rounded cursor-help">?</span>
+                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-[#2C3E50] text-[#E2E8F0] text-[9px] rounded hidden group-hover:block z-10 shadow-lg">
+                      Enter a custom value up to ₹1,50,000 to see how utilizing ELSS, PPF, or Life Insurance lowers your Old Regime tax burden instantly.
+                    </div>
+                  </div>
+                </label>
+                <div className="flex gap-3">
+                  <input 
+                    type="number" 
+                    placeholder={`Current: ₹${deductions80C}`}
+                    value={custom80C}
+                    onChange={(e) => setCustom80C(e.target.value)}
+                    className="flex-1 bg-[#0F1216] border border-[#2C3E50] p-2 text-xs text-[#E2E8F0] focus:outline-none focus:border-[#10b981] font-mono transition-colors"
+                  />
+                  <div className="bg-[#0F1216] border border-[#2C3E50]/50 p-2 flex flex-col justify-center min-w-30 rounded">
+                    <span className="text-[9px] text-[#4A6572] uppercase tracking-widest">Tax Savings</span>
+                    <span className="text-[#10b981] font-mono font-bold">
+                      ₹{Math.max(0, calcOldTax(simulatedIncome, 0) - simOldTax).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
               </div>
+
             </div>
           </div>
 
         </div>
 
-        <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden">
+        <div className="bg-[#181C28] border border-[#2C3E50] overflow-hidden mt-4">
           <div className="p-4 border-b border-[#2C3E50] bg-[#0F1216]">
             <h3 className="text-[#E2E8F0] font-semibold text-sm uppercase tracking-widest flex items-center gap-2">
               <span>🔍</span> Cash Flow & Tax Efficiency Diagnostics
@@ -556,7 +599,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
               <div className="flex justify-between items-center text-[#E2E8F0]">
                 <span className="flex flex-col">
                   <span>Gross Inflow</span>
-                  <span className="text-[9px] text-[#4A6572]">Source: Primary Salary/Income</span>
                 </span>
                 <span className="font-bold">₹{annualIncome.toLocaleString('en-IN')}</span>
               </div>
@@ -661,12 +703,6 @@ const TaxOptimizer: React.FC<TaxOptimizerProps> = ({ monthlyIncome, investments,
           </div>
         </div>
 
-        <div className="bg-[#181C28] border border-[#2C3E50]/50 p-4 text-xs text-[#4A6572] leading-relaxed mt-2">
-          <strong className="text-[#E2E8F0] flex items-center gap-2 mb-1">
-            <span>📄</span> Income Tax Returns (ITR) Filing Requirement
-          </strong>
-          Regardless of the regime chosen, if your Gross Annual Income exceeds the basic exemption limit (₹2.5L under the Old Regime, ₹3L under the New Regime), you must file your Income Tax Return (ITR) by July 31st each assessment year. Filing your ITR is a legal mandate that helps you claim TDS refunds, carry forward investment losses, and serves as an official income proof document for major financial milestones.
-        </div>
       </div>
     </div>
   );
